@@ -24,12 +24,6 @@ const ParseViewer: React.FC<ParseViewerProps> = ({
   const [expandedParagraphs, setExpandedParagraphs] = useState<Set<string>>(new Set())
   const [selectedParagraphs, setSelectedParagraphs] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
-    if (uploadedFile && !parsedContent) {
-      handleParse()
-    }
-  }, [uploadedFile, parsedContent])
-
   const handleParse = useCallback(async () => {
     if (!uploadedFile) return
 
@@ -54,6 +48,12 @@ const ParseViewer: React.FC<ParseViewerProps> = ({
       setErrorMessage(errorMessage)
     }
   }, [uploadedFile, useOCR, onContentParsed])
+
+  useEffect(() => {
+    if (uploadedFile && !parsedContent) {
+      handleParse()
+    }
+  }, [uploadedFile, parsedContent, handleParse])
 
   const toggleParagraphExpansion = (paragraphId: string) => {
     const newExpanded = new Set(expandedParagraphs)

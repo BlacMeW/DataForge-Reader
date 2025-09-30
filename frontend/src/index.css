@@ -1,3 +1,129 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* DataForge Reader - Simple CSS */
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  background: #f8fafc;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.header h1 {
+  color: #1e40af;
+  font-size: 2.5rem;
+  margin: 0;
+}
+
+.header p {
+  color: #64748b;
+  margin-top: 10px;
+}
+
+.upload-area {
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 60px 20px;
+  text-align: center;
+  background: white;
+  margin-bottom: 30px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.upload-area:hover,
+.upload-area.dragover {
+  border-color: #3b82f6;
+  background: #f0f9ff;
+}
+
+button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+button:hover {
+  background: #2563eb;
+}
+
+button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.file-info {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 15px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #10b981;
+  transition: width 0.3s;
+}
+
+.parse-viewer {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.paragraph {
+  margin-bottom: 15px;
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1.6;
+}
+
+.paragraph:hover {
+  background: #f1f5f9;
+}
+
+.paragraph.selected {
+  background: #dbeafe;
+  border-left: 4px solid #3b82f6;
+}
+
+.error {
+  color: #dc2626;
+  background: #fef2f2;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  margin: 15px 0;
+}
+
+.success {
+  color: #059669;
+  background: #f0fdf4;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #bbf7d0;
+  margin: 15px 0;
+}

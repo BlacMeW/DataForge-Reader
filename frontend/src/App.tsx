@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import FileUpload from './components/FileUpload'
 import ParseViewer from './components/ParseViewer'
-import { FileBookOpen } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 
 export interface UploadedFile {
   file_id: string
@@ -17,7 +17,7 @@ export interface ParsedParagraph {
   text: string
   word_count: number
   char_count: number
-  annotations: Record<string, any>
+  annotations: Record<string, unknown>
 }
 
 export interface ParsedContent {
@@ -57,7 +57,7 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
-              <FileBookOpen className="h-8 w-8 text-primary-600" />
+              <BookOpen className="h-8 w-8 text-primary-600" />
               <h1 className="text-2xl font-bold text-gray-900">
                 DataForge Reader
               </h1>

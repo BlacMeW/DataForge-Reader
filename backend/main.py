@@ -23,7 +23,7 @@ app.add_middleware(
 
 # Import and include routers
 try:
-    from routers import upload, parse, annotate, export
+    from backend.routers import upload, parse, annotate, export
     app.include_router(upload.router, prefix="/api", tags=["upload"])
     app.include_router(parse.router, prefix="/api", tags=["parse"])
     app.include_router(annotate.router, prefix="/api", tags=["annotate"])

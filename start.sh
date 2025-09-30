@@ -18,34 +18,36 @@ fi
 # Function to start backend
 start_backend() {
     echo "📦 Starting FastAPI backend..."
-    cd backend
     
     # Install Python dependencies if requirements.txt exists
-    if [ -f "requirements.txt" ]; then
+    if [ -f "backend/requirements.txt" ]; then
         echo "📦 Installing Python dependencies..."
+        cd backend
         pip install -r requirements.txt
+        cd ..
     fi
     
-    # Start FastAPI server
+    # Start FastAPI server from project root
     echo "🔧 Starting FastAPI server on http://localhost:8000"
-    uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
+    python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000 &
     BACKEND_PID=$!
-    cd ..
 }
 
 # Function to start frontend
 start_frontend() {
     echo "⚛️  Starting React frontend..."
-    cd frontend
     
     # Install Node dependencies if package.json exists
-    if [ -f "package.json" ]; then
+    if [ -f "frontend/package.json" ]; then
         echo "📦 Installing Node.js dependencies..."
+        cd frontend
         npm install
+        cd ..
     fi
     
     # Start React development server
     echo "🔧 Starting React development server on http://localhost:5173"
+    cd frontend
     npm run dev &
     FRONTEND_PID=$!
     cd ..
