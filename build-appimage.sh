@@ -6,23 +6,6 @@ set -e
 
 echo "🏗️  Building DataForge Reader AppImage..."
 
-# Configuration
-APP_NAME="DataForge-Reader"
-APP_VERSION="${1:-1.0.0}"  # Use first argument or default to 1.0.0
-APP_DIR="AppDir"
-PYTHON_VERSION="3.11"
-
-# If we're in GitHub Actions, extract version from tag
-if [ -n "$GITHUB_REF" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
-    APP_VERSION="${GITHUB_REF#refs/tags/}"
-    APP_VERSION="${APP_VERSION#v}"  # Remove 'v' prefix if present
-    print_status "Using version from GitHub tag: $APP_VERSION"
-elif [ -n "$1" ]; then
-    print_status "Using version from command line: $APP_VERSION"
-else
-    print_status "Using default version: $APP_VERSION"
-fi
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -45,6 +28,23 @@ print_warning() {
 print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
+
+# Configuration
+APP_NAME="DataForge-Reader"
+APP_VERSION="${1:-1.0.0}"  # Use first argument or default to 1.0.0
+APP_DIR="AppDir"
+PYTHON_VERSION="3.11"
+
+# If we're in GitHub Actions, extract version from tag
+if [ -n "$GITHUB_REF" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
+    APP_VERSION="${GITHUB_REF#refs/tags/}"
+    APP_VERSION="${APP_VERSION#v}"  # Remove 'v' prefix if present
+    print_status "Using version from GitHub tag: $APP_VERSION"
+elif [ -n "$1" ]; then
+    print_status "Using version from command line: $APP_VERSION"
+else
+    print_status "Using default version: $APP_VERSION"
+fi
 
 # Check dependencies
 check_dependencies() {
