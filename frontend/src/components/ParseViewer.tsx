@@ -66,6 +66,8 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
       const response = await axios.post(`${API_BASE_URL}/parse`, {
         file_id: file.file_id,
         use_ocr: false
+      }, {
+        timeout: 300000 // 5 minute timeout for large documents
       })
 
       // Step 3: Processing response
@@ -217,6 +219,22 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
           }}>
             <span>{processingStep}</span>
             <span>{processingProgress}%</span>
+          </div>
+          
+          {/* Additional Info */}
+          <div style={{ 
+            marginTop: '20px',
+            padding: '12px',
+            background: '#f3f4f6',
+            borderRadius: '6px',
+            fontSize: '13px',
+            color: '#6b7280',
+            textAlign: 'left'
+          }}>
+            <div><strong>Processing large documents may take time...</strong></div>
+            <div>• Text extraction from images requires OCR processing</div>
+            <div>• Complex layouts need additional analysis</div>
+            <div>• Progress will update as processing continues</div>
           </div>
           
           {/* Processing Steps Indicator */}
