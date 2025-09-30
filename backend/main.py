@@ -23,11 +23,12 @@ app.add_middleware(
 
 # Import and include routers
 try:
-    from .routers import upload, parse, annotate, export
+    from .routers import upload, parse, annotate, export, templates
     app.include_router(upload.router, prefix="/api", tags=["upload"])
     app.include_router(parse.router, prefix="/api", tags=["parse"])
     app.include_router(annotate.router, prefix="/api", tags=["annotate"])
     app.include_router(export.router, prefix="/api", tags=["export"])
+    app.include_router(templates.router, prefix="/api/dataset", tags=["templates"])
 except ImportError as e:
     print(f"Router import failed: {e}")
     # Add basic upload endpoint
