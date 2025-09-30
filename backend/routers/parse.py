@@ -9,6 +9,9 @@ from PIL import Image
 import tempfile
 import re
 from typing import List, Dict, Any
+import ebooklib
+from ebooklib import epub
+from bs4 import BeautifulSoup
 
 router = APIRouter()
 
@@ -124,6 +127,45 @@ def detect_scanned_pdf(file_path: str) -> bool:
     except Exception:
         return True  # Assume scanned if detection fails
 
+def extract_text_epub(file_path: str) -> tuple[List[Dict[str, Any]], str]:
+    """Extract text from EPUB files"""
+    paragraphs = []
+    
+    try:
+        book = epub.read_epub(file_path)
+        page_num = 1
+        
+        # Get all items in the book
+        for item in book.get_items():
+            if item.get_type() == ebooklib.ITEM_DOCUMENT:
+                # Parse HTML content
+                soup = BeautifulSoup(item.get_content(), 'html.parser')
+                
+                # Extract text from paragraphs and other text elements
+                text_elements = soup.find_all(['p', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+                
+                for element in text_elements:
+                    text = element.get_text(strip=True)
+                    if text and len(text) > 10:  # Filter out very short content
+                        cleaned = clean_text(text)
+                        if cleaned:
+                            paragraphs.append({
+                                "id": f"epub_{page_num}_{len(paragraphs)}",
+                                "page": page_num,
+                                "paragraph_index": len([p for p in paragraphs if p["page"] == page_num]),
+                                "text": cleaned,
+                                "word_count": len(cleaned.split()),
+                                "char_count": len(cleaned),
+                                "annotations": {}
+                            })
+                
+                page_num += 1
+        
+        return paragraphs, "epub"
+    
+    except Exception as e:
+        raise Exception(f"EPUB extraction failed: {str(e)}")
+
 @router.post("/parse", response_model=ParseResponse)
 async def parse_file(request: ParseRequest):
     """Parse uploaded file and extract text as paragraphs"""
@@ -150,47 +192,48 @@ async def parse_file(request: ParseRequest):
         if file_ext not in ['.pdf', '.epub']:
             raise HTTPException(status_code=400, detail="Only PDF and EPUB files are supported")
         
-        # For now, only handle PDF files
+        # Handle both PDF and EPUB files
         if file_ext == '.epub':
-            raise HTTPException(status_code=501, detail="EPUB parsing not yet implemented")
-        
-        paragraphs = []
-        extraction_method = ""
-        
-        # Determine extraction method
-        if request.use_ocr:
-            # Force OCR
-            paragraphs, extraction_method = extract_text_ocr(file_path)
-        else:
-            # Try text extraction first, fallback to OCR
-            try:
-                if detect_scanned_pdf(file_path):
-                    paragraphs, extraction_method = extract_text_ocr(file_path)
-                else:
-                    paragraphs, extraction_method = extract_text_pdfplumber(file_path)
-                    
-                    # If no paragraphs found with pdfplumber, try OCR
-                    if not paragraphs:
+            paragraphs, extraction_method = extract_text_epub(file_path)
+            total_pages = len(set(p["page"] for p in paragraphs)) if paragraphs else 1
+        elif file_ext == '.pdf':
+            paragraphs = []
+            extraction_method = ""
+            
+            # Determine extraction method for PDF
+            if request.use_ocr:
+                # Force OCR
+                paragraphs, extraction_method = extract_text_ocr(file_path)
+            else:
+                # Try text extraction first, fallback to OCR
+                try:
+                    if detect_scanned_pdf(file_path):
+                        paragraphs, extraction_method = extract_text_ocr(file_path)
+                    else:
+                        paragraphs, extraction_method = extract_text_pdfplumber(file_path)
+                        
+                        # If no paragraphs found with pdfplumber, try OCR
+                        if not paragraphs:
+                            paragraphs, extraction_method = extract_text_ocr(file_path)
+                            extraction_method += " (fallback)"
+                
+                except Exception as e:
+                    # Final fallback to OCR
+                    try:
                         paragraphs, extraction_method = extract_text_ocr(file_path)
                         extraction_method += " (fallback)"
+                    except Exception as ocr_error:
+                        raise HTTPException(
+                            status_code=500, 
+                            detail=f"Both text extraction and OCR failed. Text error: {str(e)}, OCR error: {str(ocr_error)}"
+                        )
             
-            except Exception as e:
-                # Final fallback to OCR
-                try:
-                    paragraphs, extraction_method = extract_text_ocr(file_path)
-                    extraction_method += " (fallback)"
-                except Exception as ocr_error:
-                    raise HTTPException(
-                        status_code=500, 
-                        detail=f"Both text extraction and OCR failed. Text error: {str(e)}, OCR error: {str(ocr_error)}"
-                    )
-        
-        # Get total pages
-        try:
-            with pdfplumber.open(file_path) as pdf:
-                total_pages = len(pdf.pages)
-        except:
-            total_pages = len(set(p["page"] for p in paragraphs)) if paragraphs else 0
+            # Get total pages for PDF
+            try:
+                with pdfplumber.open(file_path) as pdf:
+                    total_pages = len(pdf.pages)
+            except:
+                total_pages = len(set(p["page"] for p in paragraphs)) if paragraphs else 0
         
         processing_time = time.time() - start_time
         
