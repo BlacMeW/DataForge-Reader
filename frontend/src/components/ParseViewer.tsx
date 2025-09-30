@@ -221,7 +221,7 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
             <span>{processingProgress}%</span>
           </div>
           
-          {/* Additional Info */}
+          {/* Additional Processing Info */}
           <div style={{ 
             marginTop: '20px',
             padding: '12px',
@@ -231,10 +231,10 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
             color: '#6b7280',
             textAlign: 'left'
           }}>
-            <div><strong>Processing large documents may take time...</strong></div>
-            <div>• Text extraction from images requires OCR processing</div>
-            <div>• Complex layouts need additional analysis</div>
-            <div>• Progress will update as processing continues</div>
+            <div><strong>Large documents may take several minutes to process...</strong></div>
+            <div>• PDF text extraction and OCR processing takes time</div>
+            <div>• Complex layouts require additional analysis</div>
+            <div>• Please wait while processing completes</div>
           </div>
           
           {/* Processing Steps Indicator */}
@@ -336,389 +336,237 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
       {/* Filter Panel */}
       {paragraphs.length > 0 && showFilters && (
         <div style={{
-          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-          border: '1px solid #e2e8f0',
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          marginBottom: '24px',
-          overflow: 'hidden'
+          background: '#f8f9fa',
+          border: '1px solid #e9ecef',
+          borderRadius: '8px',
+          padding: '20px',
+          marginBottom: '20px'
         }}>
-          {/* Header */}
-          <div style={{ 
-            background: 'white',
-            borderBottom: '1px solid #e2e8f0',
-            padding: '16px 20px',
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Filter size={18} color="#475569" />
-              <h4 style={{ margin: 0, color: '#334155', fontSize: '16px', fontWeight: '600' }}>
-                Filter & Search
-              </h4>
-              <span style={{ 
-                background: '#e2e8f0', 
-                color: '#64748b', 
-                padding: '2px 8px', 
-                borderRadius: '12px', 
-                fontSize: '12px',
-                marginLeft: '8px'
-              }}>
-                {filteredParagraphs.length} of {paragraphs.length}
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                style={{
-                  backgroundColor: showFilters ? '#3b82f6' : '#f1f5f9',
-                  color: showFilters ? 'white' : '#64748b',
-                  padding: '6px 12px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <Filter size={12} />
-                {showFilters ? 'Hide' : 'Show'} Filters
-              </button>
-              <button
-                onClick={clearFilters}
-                style={{
-                  backgroundColor: '#ef4444',
-                  color: 'white',
-                  padding: '6px 12px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <X size={12} />
-                Clear All
-              </button>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Filter size={20} />
+              Filter Paragraphs
+            </h4>
+            <button
+              onClick={clearFilters}
+              style={{
+                backgroundColor: '#dc2626',
+                color: 'white',
+                padding: '6px 12px',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '14px'
+              }}
+            >
+              <X size={14} />
+              Clear All
+            </button>
           </div>
           
-          {/* Quick Search - Always Visible */}
-          <div style={{ padding: '16px 20px', borderBottom: showFilters ? '1px solid #e2e8f0' : 'none' }}>
-            <div style={{ position: 'relative', maxWidth: '400px' }}>
-              <Search size={16} style={{ 
-                position: 'absolute', 
-                left: '12px', 
-                top: '50%', 
-                transform: 'translateY(-50%)',
-                color: '#94a3b8'
-              }} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+            {/* Advanced Text Search */}
+            <div style={{ gridColumn: 'span 2' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                <Search size={16} style={{ display: 'inline', marginRight: '5px' }} />
+                Advanced Search
+              </label>
+              
+              {/* Search Mode Toggle */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                <button
+                  onClick={() => setSearchMode('text')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    backgroundColor: searchMode === 'text' ? '#3b82f6' : 'white',
+                    color: searchMode === 'text' ? 'white' : '#374151',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Text
+                </button>
+                <button
+                  onClick={() => setSearchMode('regex')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    backgroundColor: searchMode === 'regex' ? '#3b82f6' : 'white',
+                    color: searchMode === 'regex' ? 'white' : '#374151',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Regex
+                </button>
+              </div>
+              
+              {/* Search Input */}
               <input
                 type="text"
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                placeholder="Quick search in paragraphs..."
+                placeholder={searchMode === 'regex' ? 'Enter regular expression...' : 'Search in paragraph text...'}
                 style={{
                   width: '100%',
-                  padding: '10px 12px 10px 36px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  border: `1px solid ${regexError ? '#dc2626' : '#d1d5db'}`,
+                  borderRadius: '4px',
                   fontSize: '14px',
-                  background: 'white',
-                  transition: 'border-color 0.2s',
-                  outline: 'none'
+                  marginBottom: '8px'
                 }}
-                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
               />
-            </div>
-          </div>
-          
-          {/* Advanced Filters - Collapsible */}
-          {showFilters && (
-            <div style={{ padding: '20px', background: '#fafbfc' }}>
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-                gap: '20px',
-                marginBottom: '20px'
-              }}>
-                {/* Advanced Search Options */}
+              
+              {/* Regex Error */}
+              {regexError && (
                 <div style={{ 
-                  background: 'white',
-                  padding: '16px',
-                  borderRadius: '8px',
-                  border: '1px solid #e2e8f0'
+                  fontSize: '12px', 
+                  color: '#dc2626', 
+                  marginBottom: '8px' 
                 }}>
-                  <h5 style={{ 
-                    margin: '0 0 12px 0', 
-                    color: '#374151', 
-                    fontSize: '14px', 
-                    fontWeight: '600',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}>
-                    <Search size={14} />
-                    Advanced Search
-                  </h5>
-                  
-                  {/* Search Mode Toggle */}
-                  <div style={{ display: 'flex', gap: '4px', marginBottom: '12px' }}>
-                    <button
-                      onClick={() => setSearchMode('text')}
-                      style={{
-                        flex: 1,
-                        padding: '6px 8px',
-                        fontSize: '12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '4px',
-                        backgroundColor: searchMode === 'text' ? '#3b82f6' : 'white',
-                        color: searchMode === 'text' ? 'white' : '#6b7280',
-                        cursor: 'pointer',
-                        fontWeight: '500',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      Text Search
-                    </button>
-                    <button
-                      onClick={() => setSearchMode('regex')}
-                      style={{
-                        flex: 1,
-                        padding: '6px 8px',
-                        fontSize: '12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '4px',
-                        backgroundColor: searchMode === 'regex' ? '#3b82f6' : 'white',
-                        color: searchMode === 'regex' ? 'white' : '#6b7280',
-                        cursor: 'pointer',
-                        fontWeight: '500',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      RegEx
-                    </button>
-                  </div>
-                  
-                  {/* Regex Error */}
-                  {regexError && (
-                    <div style={{ 
-                      fontSize: '12px', 
-                      color: '#ef4444', 
-                      marginBottom: '8px',
-                      background: '#fef2f2',
-                      padding: '6px 8px',
-                      borderRadius: '4px',
-                      border: '1px solid #fecaca'
-                    }}>
-                      {regexError}
-                    </div>
-                  )}
-                  
-                  {/* Search Options */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-                    <label style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      cursor: 'pointer',
-                      color: '#4b5563'
-                    }}>
-                      <input
-                        type="checkbox"
-                        checked={caseSensitive}
-                        onChange={(e) => setCaseSensitive(e.target.checked)}
-                        style={{ marginRight: '8px', accentColor: '#3b82f6' }}
-                      />
-                      Case sensitive matching
-                    </label>
-                    {searchMode === 'text' && (
-                      <label style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        cursor: 'pointer',
-                        color: '#4b5563'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={wholeWords}
-                          onChange={(e) => setWholeWords(e.target.checked)}
-                          style={{ marginRight: '8px', accentColor: '#3b82f6' }}
-                        />
-                        Match whole words only
-                      </label>
-                    )}
-                  </div>
+                  {regexError}
                 </div>
-
-                {/* Filters Grid */}
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
-                  gap: '16px'
-                }}>
-                  {/* Page Filter */}
-                  <div style={{ 
-                    background: 'white',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid #e2e8f0'
-                  }}>
-                    <label style={{ 
-                      display: 'block', 
-                      marginBottom: '6px', 
-                      fontWeight: '600',
-                      fontSize: '13px',
-                      color: '#374151'
-                    }}>
-                      📄 Page
-                    </label>
-                    <select
-                      value={selectedPage}
-                      onChange={(e) => setSelectedPage(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '6px 8px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '4px',
-                        fontSize: '13px',
-                        outline: 'none'
-                      }}
-                    >
-                      <option value="all">All Pages</option>
-                      {availablePages.map(page => (
-                        <option key={page} value={page.toString()}>Page {page}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Word Count Range */}
-                  <div style={{ 
-                    background: 'white',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid #e2e8f0'
-                  }}>
-                    <label style={{ 
-                      display: 'block', 
-                      marginBottom: '6px', 
-                      fontWeight: '600',
-                      fontSize: '13px',
-                      color: '#374151'
-                    }}>
-                      📝 Word Count
-                    </label>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <input
-                        type="number"
-                        value={minWordCount}
-                        onChange={(e) => setMinWordCount(e.target.value)}
-                        placeholder="Min"
-                        style={{
-                          flex: 1,
-                          padding: '6px 8px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          outline: 'none'
-                        }}
-                      />
-                      <input
-                        type="number"
-                        value={maxWordCount}
-                        onChange={(e) => setMaxWordCount(e.target.value)}
-                        placeholder="Max"
-                        style={{
-                          flex: 1,
-                          padding: '6px 8px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          outline: 'none'
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Character Count Range */}
-                  <div style={{ 
-                    background: 'white',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid #e2e8f0'
-                  }}>
-                    <label style={{ 
-                      display: 'block', 
-                      marginBottom: '6px', 
-                      fontWeight: '600',
-                      fontSize: '13px',
-                      color: '#374151'
-                    }}>
-                      🔤 Character Count
-                    </label>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <input
-                        type="number"
-                        value={minCharCount}
-                        onChange={(e) => setMinCharCount(e.target.value)}
-                        placeholder="Min"
-                        style={{
-                          flex: 1,
-                          padding: '6px 8px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          outline: 'none'
-                        }}
-                      />
-                      <input
-                        type="number"
-                        value={maxCharCount}
-                        onChange={(e) => setMaxCharCount(e.target.value)}
-                        placeholder="Max"
-                        style={{
-                          flex: 1,
-                          padding: '6px 8px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          outline: 'none'
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
+              )}
+              
+              {/* Search Options */}
+              <div style={{ display: 'flex', gap: '16px', fontSize: '14px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={caseSensitive}
+                    onChange={(e) => setCaseSensitive(e.target.checked)}
+                    style={{ marginRight: '6px' }}
+                  />
+                  Case sensitive
+                </label>
+                {searchMode === 'text' && (
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={wholeWords}
+                      onChange={(e) => setWholeWords(e.target.checked)}
+                      style={{ marginRight: '6px' }}
+                    />
+                    Whole words
+                  </label>
+                )}
               </div>
             </div>
-          )}
+
+            {/* Page Filter */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                📄 Page
+              </label>
+              <select
+                value={selectedPage}
+                onChange={(e) => setSelectedPage(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="all">All Pages</option>
+                {availablePages.map(page => (
+                  <option key={page} value={page.toString()}>Page {page}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Word Count Range */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                📝 Word Count
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="number"
+                  value={minWordCount}
+                  onChange={(e) => setMinWordCount(e.target.value)}
+                  placeholder="Min"
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                />
+                <input
+                  type="number"
+                  value={maxWordCount}
+                  onChange={(e) => setMaxWordCount(e.target.value)}
+                  placeholder="Max"
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Character Count Range */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                🔤 Character Count
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="number"
+                  value={minCharCount}
+                  onChange={(e) => setMinCharCount(e.target.value)}
+                  placeholder="Min"
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                />
+                <input
+                  type="number"
+                  value={maxCharCount}
+                  onChange={(e) => setMaxCharCount(e.target.value)}
+                  placeholder="Max"
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
 
           {/* Filter Results Summary */}
           <div style={{ 
-            background: 'white',
-            borderTop: '1px solid #e2e8f0',
-            padding: '12px 20px',
+            marginTop: '15px', 
+            padding: '10px', 
+            background: '#e0f2fe', 
+            borderRadius: '4px',
             fontSize: '14px',
-            color: '#64748b',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
+            color: '#0369a1'
           }}>
-            <div>
-              <strong style={{ color: '#475569' }}>Results:</strong> Showing {filteredParagraphs.length} of {paragraphs.length} paragraphs
-            </div>
+            <strong>Filter Results:</strong> Showing {filteredParagraphs.length} of {paragraphs.length} paragraphs
             {filteredParagraphs.length !== paragraphs.length && (
-              <div style={{ color: '#ef4444', fontSize: '13px' }}>
-                {paragraphs.length - filteredParagraphs.length} filtered out
-              </div>
+              <span style={{ marginLeft: '10px', color: '#dc2626' }}>
+                ({paragraphs.length - filteredParagraphs.length} filtered out)
+              </span>
             )}
           </div>
         </div>
