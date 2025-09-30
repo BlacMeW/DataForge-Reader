@@ -3,16 +3,32 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 
 # Create necessary directories - handle both regular and AppImage execution
+storage_dir = "../storage"
+uploads_dir = "../storage/uploads"
+exports_dir = "../dataset_exports"
+
 try:
-    os.makedirs("../storage/uploads", exist_ok=True)
-    os.makedirs("../dataset_exports", exist_ok=True)
+    os.makedirs(uploads_dir, exist_ok=True)
+    os.makedirs(exports_dir, exist_ok=True)
+    print(f"Using regular directories: {uploads_dir}, {exports_dir}")
 except (OSError, PermissionError):
     # If we can't create in parent directory (like in AppImage), use temp directories
     import tempfile
     temp_dir = tempfile.gettempdir()
-    os.makedirs(os.path.join(temp_dir, "dataforge_storage", "uploads"), exist_ok=True)
-    os.makedirs(os.path.join(temp_dir, "dataforge_exports"), exist_ok=True)
-    print(f"Using temporary directories: {temp_dir}/dataforge_*")
+    storage_dir = os.path.join(temp_dir, "dataforge_storage")
+    uploads_dir = os.path.join(temp_dir, "dataforge_storage", "uploads")
+    annotations_dir = os.path.join(temp_dir, "dataforge_storage", "annotations")
+    exports_dir = os.path.join(temp_dir, "dataforge_exports")
+    
+    os.makedirs(uploads_dir, exist_ok=True)
+    os.makedirs(annotations_dir, exist_ok=True)
+    os.makedirs(exports_dir, exist_ok=True)
+    print(f"Using temporary directories: {uploads_dir}, {annotations_dir}, {exports_dir}")
+
+# Set environment variables for routers to use
+os.environ["DATAFORGE_STORAGE_DIR"] = storage_dir
+os.environ["DATAFORGE_UPLOADS_DIR"] = uploads_dir
+os.environ["DATAFORGE_EXPORTS_DIR"] = exports_dir
 
 app = FastAPI(
     title="DataForge Reader API",

@@ -9,6 +9,13 @@ from typing import List, Dict, Any, Optional
 
 router = APIRouter()
 
+# Get directories from environment variables or use defaults
+def get_storage_dir():
+    return os.environ.get("DATAFORGE_STORAGE_DIR", "../storage")
+
+def get_exports_dir():
+    return os.environ.get("DATAFORGE_EXPORTS_DIR", "../dataset_exports")
+
 class ExportRequest(BaseModel):
     file_id: str
     format: str  # "csv" or "jsonl"
@@ -22,7 +29,8 @@ def get_parsed_data(file_id: str) -> List[Dict[str, Any]]:
 
 def get_annotations_data(file_id: str) -> Dict[str, Dict[str, Any]]:
     """Retrieve annotations for a file"""
-    annotations_file = f"../storage/annotations/{file_id}_annotations.json"
+    storage_dir = get_storage_dir()
+    annotations_file = f"{storage_dir}/annotations/{file_id}_annotations.json"
     if os.path.exists(annotations_file):
         try:
             with open(annotations_file, 'r', encoding='utf-8') as f:
@@ -72,7 +80,7 @@ async def export_data(request: ExportRequest):
             export_data.append(item)
         
         # Generate export file
-        export_dir = "../dataset_exports"
+        export_dir = get_exports_dir()
         os.makedirs(export_dir, exist_ok=True)
         
         filename = f"{request.file_id}_export.{request.format}"
@@ -107,7 +115,7 @@ async def download_export(
 ):
     """Download exported data file"""
     try:
-        export_dir = "../dataset_exports"
+        export_dir = get_exports_dir()
         filename = f"{file_id}_export.{format}"
         file_path = os.path.join(export_dir, filename)
         

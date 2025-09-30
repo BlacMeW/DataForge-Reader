@@ -8,6 +8,10 @@ from datetime import datetime
 
 router = APIRouter()
 
+# Get storage directory from environment variable or use default
+def get_storage_dir():
+    return os.environ.get("DATAFORGE_STORAGE_DIR", "../storage")
+
 class AnnotationRequest(BaseModel):
     file_id: str
     paragraph_id: str
@@ -21,7 +25,8 @@ class AnnotationResponse(BaseModel):
 
 def get_annotations_file_path(file_id: str) -> str:
     """Get the path to the annotations file for a given file_id"""
-    annotations_dir = "../storage/annotations"
+    storage_dir = get_storage_dir()
+    annotations_dir = f"{storage_dir}/annotations"
     os.makedirs(annotations_dir, exist_ok=True)
     return os.path.join(annotations_dir, f"{file_id}_annotations.json")
 

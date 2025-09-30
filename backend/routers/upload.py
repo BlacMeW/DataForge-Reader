@@ -5,6 +5,10 @@ import uuid
 import magic
 from typing import List
 
+# Get upload directory from environment variable or use default
+def get_upload_dir():
+    return os.environ.get("DATAFORGE_UPLOADS_DIR", "../storage/uploads")
+
 router = APIRouter()
 
 ALLOWED_EXTENSIONS = {'.pdf', '.epub'}
@@ -50,7 +54,7 @@ async def upload_file(file: UploadFile = File(...)):
         unique_filename = f"{file_id}{file_ext}"
         
         # Create upload path
-        upload_dir = "../storage/uploads"
+        upload_dir = get_upload_dir()
         os.makedirs(upload_dir, exist_ok=True)
         file_path = os.path.join(upload_dir, unique_filename)
         
@@ -108,7 +112,7 @@ async def upload_file(file: UploadFile = File(...)):
 async def list_uploads():
     """List all uploaded files"""
     try:
-        upload_dir = "../storage/uploads"
+        upload_dir = get_upload_dir()
         if not os.path.exists(upload_dir):
             return {"files": []}
         
@@ -137,7 +141,7 @@ async def list_uploads():
 async def delete_upload(file_id: str):
     """Delete an uploaded file"""
     try:
-        upload_dir = "../storage/uploads"
+        upload_dir = get_upload_dir()
         
         # Find file with matching ID
         for filename in os.listdir(upload_dir):

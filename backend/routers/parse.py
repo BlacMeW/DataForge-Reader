@@ -8,6 +8,10 @@ from pdf2image import convert_from_path
 from PIL import Image
 import tempfile
 import re
+
+# Get upload directory from environment variable or use default
+def get_upload_dir():
+    return os.environ.get("DATAFORGE_UPLOADS_DIR", "../storage/uploads")
 from typing import List, Dict, Any
 import ebooklib
 from ebooklib import epub
@@ -174,7 +178,7 @@ async def parse_file(request: ParseRequest):
     
     try:
         # Find the uploaded file
-        upload_dir = "../storage/uploads"
+        upload_dir = get_upload_dir()
         file_path = None
         original_filename = None
         
