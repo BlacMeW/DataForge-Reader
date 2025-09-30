@@ -43,11 +43,18 @@ const DatasetTemplateSelector: React.FC<DatasetTemplateProps> = ({
 
   const loadTemplates = async () => {
     try {
+      console.log('Loading templates from:', `${API_BASE_URL}/dataset/templates`)
       const response = await axios.get(`${API_BASE_URL}/dataset/templates`)
-      setTemplates(response.data.templates)
+      console.log('Templates loaded:', response.data)
+      setTemplates(response.data.templates || [])
       setLoading(false)
     } catch (error) {
       console.error('Failed to load templates:', error)
+      if (axios.isAxiosError(error)) {
+        console.error('Response:', error.response?.data)
+        console.error('Status:', error.response?.status)
+      }
+      setTemplates([]) // Set empty array on error
       setLoading(false)
     }
   }
@@ -72,6 +79,49 @@ const DatasetTemplateSelector: React.FC<DatasetTemplateProps> = ({
       <div className="container">
         <div style={{ textAlign: 'center', padding: '40px' }}>
           <p>Loading dataset templates...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (templates.length === 0) {
+    return (
+      <div className="container">
+        <div className="header">
+          <h2>Choose Dataset Template</h2>
+          <p>Select a predefined template or create a custom dataset structure</p>
+        </div>
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <p style={{ color: '#dc2626', marginBottom: '20px' }}>
+            ⚠️ Unable to load predefined templates. Please check if the backend server is running.
+          </p>
+          <button 
+            onClick={loadTemplates}
+            style={{ 
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              marginRight: '10px'
+            }}
+          >
+            Retry Loading Templates
+          </button>
+          <button 
+            onClick={onCustomTemplate}
+            style={{ 
+              backgroundColor: '#10b981',
+              color: 'white',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Create Custom Template
+          </button>
         </div>
       </div>
     )

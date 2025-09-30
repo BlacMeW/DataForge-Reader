@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import { BookOpen, Loader, AlertCircle } from 'lucide-react'
 import type { UploadedFile, ParsedParagraph } from '../App'
+import ExportButtons from './ExportButtons'
 
 interface ParseViewerProps {
   file: UploadedFile
@@ -60,7 +61,7 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
     return (
       <div className="container">
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <Loader size={48} color="#3b82f6" style={{ animation: 'spin 1s linear infinite' }} />
+          <Loader size={48} color="#3b82f6" />
           <h3 style={{ marginTop: '20px' }}>Processing your document...</h3>
           <p>Extracting text content from {file.filename}</p>
         </div>
@@ -99,9 +100,16 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
         </div>
       </div>
 
-      <div style={{ marginBottom: '20px' }}>
+      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
         <button onClick={onClose}>← Back to Upload</button>
-        <button onClick={parseFile} style={{ marginLeft: '10px' }}>🔄 Reprocess</button>
+        <button onClick={parseFile}>🔄 Reprocess</button>
+        
+        {paragraphs.length > 0 && (
+          <>
+            <div style={{ borderLeft: '1px solid #ccc', height: '30px', margin: '0 10px' }}></div>
+            <ExportButtons fileId={file.file_id} disabled={paragraphs.length === 0} />
+          </>
+        )}
       </div>
 
       <div className="parse-viewer">
@@ -147,7 +155,6 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
                       style={{ marginTop: '10px' }}
                       onClick={(e) => {
                         e.stopPropagation()
-                        // TODO: Add annotation functionality
                         alert('Annotation feature coming soon!')
                       }}
                     >
