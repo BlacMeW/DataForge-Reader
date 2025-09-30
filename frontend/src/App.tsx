@@ -4,8 +4,9 @@ import ParseViewer from './components/ParseViewer'
 import DatasetTemplateSelector from './components/DatasetTemplateSelector'
 import CustomTemplateDesigner from './components/CustomTemplateDesigner'
 import ProjectManager, { type Project } from './components/ProjectManager'
+import UserGuide from './components/UserGuide'
 import { useKeyboardShortcuts, showKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
-import { BookOpen, Settings, Folder, Keyboard } from 'lucide-react'
+import { BookOpen, Settings, Folder, Keyboard, HelpCircle } from 'lucide-react'
 
 export interface UploadedFile {
   file_id: string
@@ -49,6 +50,7 @@ function App() {
   const [currentView, setCurrentView] = useState<AppView>('upload')
   const [selectedTemplate, setSelectedTemplate] = useState<DatasetTemplate | null>(null)
   const [currentProject, setCurrentProject] = useState<Project | null>(null)
+  const [showUserGuide, setShowUserGuide] = useState<boolean>(false)
 
   // Define keyboard shortcuts
   const keyboardShortcuts = [
@@ -75,6 +77,11 @@ function App() {
       ctrlKey: true,
       callback: () => showKeyboardShortcuts(keyboardShortcuts),
       description: 'Show Keyboard Shortcuts'
+    },
+    {
+      key: 'F1',
+      callback: () => setShowUserGuide(true),
+      description: 'Open User Guide'
     },
     {
       key: 'Escape',
@@ -153,6 +160,23 @@ function App() {
             </button>
             
             <div style={{ borderLeft: '1px solid #e5e7eb', height: '24px', margin: '0 8px' }}></div>
+            
+            <button 
+              onClick={() => setShowUserGuide(true)}
+              style={{ 
+                background: 'none',
+                color: '#6b7280',
+                border: 'none',
+                padding: '8px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+              title="User Guide & Documentation"
+            >
+              <HelpCircle size={16} />
+            </button>
             
             <button 
               onClick={() => showKeyboardShortcuts(keyboardShortcuts)}
@@ -262,6 +286,12 @@ function App() {
       }}>
         Built with React and FastAPI for ML Dataset Creation
       </footer>
+
+      {/* User Guide Modal */}
+      <UserGuide 
+        isOpen={showUserGuide} 
+        onClose={() => setShowUserGuide(false)} 
+      />
     </div>
   )
 }

@@ -45,6 +45,20 @@ def root():
 def health_check():
     return {"status": "healthy"}
 
+@app.get("/api/user-guide")
+def get_user_guide():
+    """Serve the user guide documentation"""
+    try:
+        import os
+        guide_path = os.path.join(os.path.dirname(__file__), "..", "USER_GUIDE.md")
+        with open(guide_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return {"content": content, "format": "markdown"}
+    except FileNotFoundError:
+        return {"error": "User guide not found", "content": "# User Guide\n\nUser guide is being prepared..."}
+    except Exception as e:
+        return {"error": str(e), "content": "# Error\n\nFailed to load user guide."}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
