@@ -98,20 +98,17 @@ jobs:
         # Copy system Python
         cp /usr/bin/python3 AppDir/usr/bin/
         
-        # Create a pip installation in AppDir
-        cd AppDir/usr/lib/dataforge-reader
-        python3 -m venv . --system-site-packages
-        source bin/activate
+        # Create virtual environment in the dataforge-reader directory
+        python3 -m venv AppDir/usr/lib/dataforge-reader --system-site-packages
         
-        # Install backend dependencies
+        # Activate environment and install dependencies
+        source AppDir/usr/lib/dataforge-reader/bin/activate
         pip install --upgrade pip
-        pip install -r ../../../backend/requirements.txt
+        pip install -r backend/requirements.txt
         
-        # Copy application files
-        cp -r ../../../backend ./
-        cp -r ../../../frontend/dist/* ./
-        
-        cd ../../..
+        # Copy application files to the virtual environment directory
+        cp -r backend AppDir/usr/lib/dataforge-reader/
+        cp -r frontend/dist/* AppDir/usr/lib/dataforge-reader/
         
         # Create desktop file
         cat > AppDir/DataForge-Reader.desktop << EOF
