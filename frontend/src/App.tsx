@@ -20,76 +20,52 @@ export interface ParsedParagraph {
   annotations: Record<string, unknown>
 }
 
-export interface ParsedContent {
-  file_id: string
-  filename: string
-  total_pages: number
-  paragraphs: ParsedParagraph[]
-  extraction_method: string
-  processing_time: number
-}
-
 function App() {
-  const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null)
-  const [parsedContent, setParsedContent] = useState<ParsedContent | null>(null)
-  const [currentView, setCurrentView] = useState<'upload' | 'parse'>('upload')
-
-  const handleFileUploaded = (file: UploadedFile) => {
-    setUploadedFile(file)
-    setParsedContent(null)
-    setCurrentView('parse')
-  }
-
-  const handleContentParsed = (content: ParsedContent) => {
-    setParsedContent(content)
-  }
-
-  const handleBackToUpload = () => {
-    setCurrentView('upload')
-    setUploadedFile(null)
-    setParsedContent(null)
-  }
+  const [currentFile, setCurrentFile] = useState<UploadedFile | null>(null)
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <BookOpen className="h-8 w-8 text-primary-600" />
-              <h1 className="text-2xl font-bold text-gray-900">
-                DataForge Reader
-              </h1>
-            </div>
-            <div className="text-sm text-gray-500">
-              Upload • Parse • Annotate • Export
-            </div>
+    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+      <header style={{ 
+        background: 'white', 
+        borderBottom: '1px solid #e5e7eb',
+        padding: '20px 0'
+      }}>
+        <div className="container" style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <BookOpen size={32} color="#1e40af" style={{ marginRight: '12px' }} />
+            <h1 style={{ margin: 0, fontSize: '28px' }}>DataForge Reader</h1>
+          </div>
+          <div style={{ fontSize: '14px', color: '#6b7280' }}>
+            Upload • Parse • Annotate • Export
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {currentView === 'upload' ? (
-          <FileUpload onFileUploaded={handleFileUploaded} />
-        ) : (
-          <ParseViewer
-            uploadedFile={uploadedFile}
-            parsedContent={parsedContent}
-            onContentParsed={handleContentParsed}
-            onBackToUpload={handleBackToUpload}
+      <main style={{ padding: '40px 0' }}>
+        {currentFile ? (
+          <ParseViewer 
+            file={currentFile} 
+            onClose={() => setCurrentFile(null)}
           />
+        ) : (
+          <FileUpload onFileUploaded={setCurrentFile} />
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-white border-t mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="text-center text-sm text-gray-500">
-            Built with React, TailwindCSS, and FastAPI
-          </div>
-        </div>
+      <footer style={{ 
+        background: 'white', 
+        borderTop: '1px solid #e5e7eb',
+        padding: '20px 0',
+        marginTop: 'auto',
+        textAlign: 'center',
+        fontSize: '14px',
+        color: '#6b7280'
+      }}>
+        Built with React and FastAPI for ML Dataset Creation
       </footer>
     </div>
   )

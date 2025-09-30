@@ -11,12 +11,18 @@ ALLOWED_EXTENSIONS = {'.pdf', '.epub'}
 ALLOWED_MIME_TYPES = {
     'application/pdf',
     'application/epub+zip',
-    'application/x-mobipocket-ebook'
+    'application/x-mobipocket-ebook',
+    'application/zip',  # EPUB files are often detected as ZIP
+    'application/octet-stream'  # Sometimes EPUB files are detected as binary
 }
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
 def validate_file(file: UploadFile) -> tuple[bool, str]:
     """Validate uploaded file type and size"""
+    # Check if filename exists
+    if not file.filename:
+        return False, "No filename provided"
+    
     # Check file extension
     file_ext = os.path.splitext(file.filename.lower())[1]
     if file_ext not in ALLOWED_EXTENSIONS:
@@ -39,7 +45,8 @@ async def upload_file(file: UploadFile = File(...)):
         
         # Generate unique filename
         file_id = str(uuid.uuid4())
-        file_ext = os.path.splitext(file.filename.lower())[1]
+        filename = file.filename or "unknown"
+        file_ext = os.path.splitext(filename.lower())[1]
         unique_filename = f"{file_id}{file_ext}"
         
         # Create upload path
@@ -53,7 +60,14 @@ async def upload_file(file: UploadFile = File(...)):
         # Additional MIME type validation using python-magic
         try:
             mime_type = magic.from_buffer(content, mime=True)
-            if mime_type not in ALLOWED_MIME_TYPES:
+            
+            # Special handling for EPUB files (they can have various MIME types)
+            if file_ext == '.epub':
+                # For EPUB, accept common MIME types or skip validation
+                epub_mime_types = {'application/epub+zip', 'application/zip', 'application/octet-stream'}
+                if mime_type not in epub_mime_types:
+                    print(f"Warning: EPUB file has unexpected MIME type: {mime_type}, but proceeding...")
+            elif mime_type not in ALLOWED_MIME_TYPES:
                 raise HTTPException(
                     status_code=400, 
                     detail=f"Invalid file type detected: {mime_type}. Only PDF and EPUB files are supported."
