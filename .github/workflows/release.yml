@@ -1,0 +1,137 @@
+name: Build and Release AppImage
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0, v1.2.3, etc.
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build-appimage:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-venv nodejs npm wget imagemagick fuse
+        
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci
+      
+    - name: Make build script executable
+      run: chmod +x build-appimage.sh optimize-frontend.sh
+      
+    - name: Optimize frontend
+      run: ./optimize-frontend.sh
+      
+    - name: Build AppImage
+      run: ./build-appimage.sh
+      
+    - name: Get version from tag
+      id: get_version
+      run: |
+        if [ "${{ github.ref_type }}" = "tag" ]; then
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        else
+          echo "version=dev-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Verify AppImage
+      run: |
+        ls -la *.AppImage
+        file *.AppImage
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_version.outputs.version }}
+        release_name: DataForge Reader ${{ steps.get_version.outputs.version }}
+        body: |
+          ## DataForge Reader ${{ steps.get_version.outputs.version }}
+          
+          ### 📦 Portable Linux Application
+          
+          **Download:** `DataForge-Reader-${{ steps.get_version.outputs.version }}-x86_64.AppImage`
+          
+          ### 🚀 Quick Start
+          ```bash
+          # Download and run
+          chmod +x DataForge-Reader-*-x86_64.AppImage
+          ./DataForge-Reader-*-x86_64.AppImage
+          ```
+          
+          ### ✨ Features
+          - 📄 **PDF Processing** - Upload and parse PDF documents
+          - 🏷️ **Smart Annotation** - AI-powered data labeling
+          - 📊 **Dataset Export** - Multiple format support (JSON, CSV, JSONL)
+          - 📋 **Custom Templates** - Design your own data extraction templates
+          - 🔍 **Data Analytics** - Built-in dataset analysis tools
+          - 💾 **Project Management** - Save and manage multiple projects
+          
+          ### 🖥️ System Requirements
+          - **OS:** Linux (glibc 2.17+)
+          - **Architecture:** x86_64
+          - **RAM:** 512MB minimum, 2GB recommended
+          - **Disk:** 200MB for AppImage + storage for your data
+          
+          ### 🛠️ What's New
+          - Self-contained portable application
+          - No installation required
+          - Automatic port detection
+          - Improved startup performance
+          
+          ### 🐛 Known Issues
+          - First startup may take 3-5 seconds
+          - Requires FUSE on some older systems
+          
+          ### 📚 Documentation
+          See [User Guide](https://github.com/${{ github.repository }}/blob/main/USER_GUIDE.md) for detailed usage instructions.
+          
+          ---
+          
+          **File Size:** ~35-40MB | **No dependencies required** | **Works on most Linux distributions**
+        draft: false
+        prerelease: false
+        
+    - name: Find AppImage file
+      id: find_appimage
+      run: |
+        APPIMAGE_FILE=$(ls DataForge-Reader-*-x86_64.AppImage | head -1)
+        echo "appimage_file=$APPIMAGE_FILE" >> $GITHUB_OUTPUT
+        echo "Found AppImage: $APPIMAGE_FILE"
+        
+    - name: Upload AppImage to Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./${{ steps.find_appimage.outputs.appimage_file }}
+        asset_name: DataForge-Reader-${{ steps.get_version.outputs.version }}-x86_64.AppImage
+        asset_content_type: application/octet-stream
+        
+    - name: Update latest release info
+      run: |
+        echo "✅ AppImage built and released successfully!"
+        echo "📦 File: DataForge-Reader-${{ steps.get_version.outputs.version }}-x86_64.AppImage"
+        echo "🔗 Release URL: ${{ steps.create_release.outputs.html_url }}"
