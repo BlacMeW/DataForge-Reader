@@ -1,0 +1,90 @@
+name: Simple AppImage Build
+
+on:
+  workflow_dispatch:  # Manual trigger only for testing
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-venv python3-pip imagemagick fuse libfuse2
+        
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm install
+        npm run build
+        
+    - name: Create minimal AppImage
+      run: |
+        # Create simple structure
+        mkdir -p AppDir/opt/dataforge
+        
+        # Copy files
+        cp -r frontend/dist/* AppDir/opt/dataforge/
+        cp -r backend AppDir/opt/dataforge/backend
+        
+        # Create virtual environment and install dependencies
+        cd AppDir/opt/dataforge
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install -r backend/requirements.txt
+        cd ../../..
+        
+        # Create desktop file
+        cat > AppDir/DataForge-Reader.desktop << 'EOF'
+        [Desktop Entry]
+        Type=Application
+        Name=DataForge Reader
+        Exec=AppRun
+        Icon=DataForge-Reader
+        Categories=Office;
+        EOF
+        
+        # Create icon
+        convert -size 256x256 xc:'#2563eb' -fill white -pointsize 48 -gravity center -annotate 0 'DF' AppDir/DataForge-Reader.png || echo "Icon creation failed, continuing..."
+        
+        # Create AppRun
+        cat > AppDir/AppRun << 'EOF'
+        #!/bin/bash
+        cd "$(dirname "$0")/opt/dataforge"
+        source venv/bin/activate
+        python3 -m uvicorn backend.main:app --host 0.0.0.0 --port 8001 &
+        python3 -m http.server 5174 &
+        echo "DataForge Reader started on http://localhost:5174"
+        wait
+        EOF
+        chmod +x AppDir/AppRun
+        
+        # Download AppImageTool
+        wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x appimagetool-x86_64.AppImage
+        
+        # Build AppImage
+        ./appimagetool-x86_64.AppImage AppDir DataForge-Reader-simple.AppImage
+        
+        ls -la *.AppImage
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: DataForge-Reader-AppImage
+        path: "*.AppImage"
