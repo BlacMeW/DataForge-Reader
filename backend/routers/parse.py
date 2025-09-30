@@ -12,6 +12,7 @@ import re
 # Get upload directory from environment variable or use default
 def get_upload_dir():
     return os.environ.get("DATAFORGE_UPLOADS_DIR", "../storage/uploads")
+
 from typing import List, Dict, Any
 import ebooklib
 from ebooklib import epub
