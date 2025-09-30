@@ -95,3 +95,8 @@ test_*.py
 *-old.*
 *.old
 *.backup
+
+# AppImage build artifacts
+AppDir/
+*.AppImage
+appimagetool-*.AppImage
