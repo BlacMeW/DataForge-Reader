@@ -80,28 +80,38 @@ jobs:
         chmod +x build-appimage.sh optimize-frontend.sh
         echo "✅ Build scripts made executable"
         
-    - name: Create simplified AppImage build
+    - name: Create robust AppImage build
       run: |
         set -e
         VERSION="${{ steps.get_version.outputs.version }}"
         echo "🏗️ Building AppImage with version: $VERSION"
         
-        # Create basic AppDir structure
-        mkdir -p AppDir/opt/DataForge-Reader/backend
-        mkdir -p AppDir/opt/DataForge-Reader/venv
+        # Create AppDir structure
+        mkdir -p AppDir/usr/bin
+        mkdir -p AppDir/usr/lib/dataforge-reader
+        mkdir -p AppDir/usr/share/dataforge-reader
         
-        # Copy backend files
-        cp -r backend/* AppDir/opt/DataForge-Reader/backend/
+        # Install Python and dependencies globally in AppDir
+        echo "📦 Setting up Python environment..."
+        export APPDIR_PYTHON="AppDir/usr/bin/python3"
         
-        # Copy frontend build
-        cp -r frontend/dist/* AppDir/opt/DataForge-Reader/
+        # Copy system Python
+        cp /usr/bin/python3 AppDir/usr/bin/
         
-        # Install Python dependencies in virtual environment
-        cd AppDir/opt/DataForge-Reader
-        python3 -m venv venv
-        source venv/bin/activate
-        pip install -r backend/requirements.txt
-        cd ../../../
+        # Create a pip installation in AppDir
+        cd AppDir/usr/lib/dataforge-reader
+        python3 -m venv . --system-site-packages
+        source bin/activate
+        
+        # Install backend dependencies
+        pip install --upgrade pip
+        pip install -r ../../../backend/requirements.txt
+        
+        # Copy application files
+        cp -r ../../../backend ./
+        cp -r ../../../frontend/dist/* ./
+        
+        cd ../../..
         
         # Create desktop file
         cat > AppDir/DataForge-Reader.desktop << EOF
@@ -114,72 +124,85 @@ jobs:
         Categories=Office;Development;
         EOF
         
-        # Create simple application icon (256x256 PNG) - fallback approach
-        if ! convert -size 256x256 xc:'#2563eb' -fill white -draw 'circle 128,128 64,64' AppDir/DataForge-Reader.png 2>/dev/null; then
-          # Fallback: create basic solid color icon
-          convert -size 256x256 xc:'#2563eb' AppDir/DataForge-Reader.png 2>/dev/null || {
-            # Ultimate fallback: create SVG icon
-            cat > AppDir/DataForge-Reader.svg << 'SVGEOF'
-        <?xml version="1.0" encoding="UTF-8"?>
-        <svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
-          <rect width="256" height="256" fill="#2563eb" rx="32"/>
-          <circle cx="128" cy="128" r="64" fill="white"/>
-        </svg>
-        SVGEOF
-            echo "Created SVG icon as fallback"
-          }
-        fi
+        # Create application icon
+        convert -size 256x256 xc:'#2563eb' -fill white -draw 'circle 128,128 64,64' AppDir/DataForge-Reader.png 2>/dev/null || \
+        convert -size 256x256 xc:'#2563eb' AppDir/DataForge-Reader.png
         
-        # Create simple AppRun
+        # Create robust AppRun script
         cat > AppDir/AppRun << 'EOF'
         #!/bin/bash
+        
+        # Get AppImage directory
         APPDIR="$(dirname "$(readlink -f "$0")")"
-        export PATH="$APPDIR/opt/DataForge-Reader/venv/bin:$PATH"
-        cd "$APPDIR/opt/DataForge-Reader"
+        DATAFORGE_DIR="$APPDIR/usr/lib/dataforge-reader"
         
-        # Create startup script with proper error handling
-        echo "🚀 Starting DataForge Reader..."
-        echo "📁 Working directory: $(pwd)"
-        echo "📁 Directory contents:"
-        ls -la
-        echo "📁 Backend directory:"
-        ls -la backend/
+        echo "🚀 DataForge Reader AppImage Starting..."
+        echo "📁 AppDir: $APPDIR"
+        echo "📁 DataForge Dir: $DATAFORGE_DIR"
         
-        # Set PYTHONPATH to ensure proper module resolution
-        export PYTHONPATH="$PWD:$PWD/backend:$PYTHONPATH"
-        echo "🐍 PYTHONPATH: $PYTHONPATH"
+        # Change to application directory
+        cd "$DATAFORGE_DIR" || exit 1
         
-        # Start backend on port 8000 (matches frontend expectations)
-        echo "📊 Starting backend server..."
-        python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --log-level debug 2>&1 | tee backend.log &
+        # Activate virtual environment
+        source bin/activate
+        echo "🐍 Python environment activated"
+        echo "🐍 Python path: $(which python)"
+        echo "🐍 Pip list:"
+        pip list | head -10
+        
+        # Set proper Python path
+        export PYTHONPATH="$DATAFORGE_DIR:$DATAFORGE_DIR/backend:$PYTHONPATH"
+        
+        # Create necessary directories
+        mkdir -p storage/uploads dataset_exports 2>/dev/null || true
+        
+        # Test Python can import our modules
+        echo "🧪 Testing Python imports..."
+        python -c "import backend.main; print('✅ Backend main imported successfully')" || {
+            echo "❌ Failed to import backend.main"
+            echo "📁 Current directory contents:"
+            ls -la
+            echo "📁 Backend directory:"
+            ls -la backend/ 2>/dev/null || echo "No backend directory found"
+            exit 1
+        }
+        
+        # Start backend server
+        echo "📊 Starting backend server on port 8000..."
+        python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --log-level info &
         BACKEND_PID=$!
         
-        # Wait for backend to start and test connection
-        echo "⏳ Waiting for backend to initialize..."
-        for i in {1..15}; do
-          if curl -s http://127.0.0.1:8000/api/health > /dev/null 2>&1; then
-            echo "✅ Backend is ready!"
-            # Test the templates endpoint specifically
-            echo "🧪 Testing templates endpoint..."
-            curl -s http://127.0.0.1:8000/api/dataset/templates | head -100
-            break
-          fi
-          echo "⏳ Attempt $i/15 - Backend not ready yet..."
-          sleep 2
+        # Wait for backend to be ready
+        echo "⏳ Waiting for backend to start..."
+        for i in {1..20}; do
+            if curl -s http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
+                echo "✅ Backend is ready!"
+                echo "🧪 Testing templates endpoint..."
+                TEMPLATES_RESPONSE=$(curl -s http://127.0.0.1:8000/api/dataset/templates)
+                echo "Templates response: ${TEMPLATES_RESPONSE:0:100}..."
+                break
+            fi
+            echo "⏳ Backend not ready yet (attempt $i/20)..."
+            sleep 2
         done
         
-        # Start simple HTTP server for frontend
-        echo "🌐 Starting frontend server..."
-        python3 -m http.server 5173 &
+        # Start frontend server
+        echo "🌐 Starting frontend server on port 5173..."
+        python -m http.server 5173 >/dev/null 2>&1 &
         FRONTEND_PID=$!
         
-        echo "🚀 DataForge Reader started!"
-        echo "📊 Backend: http://127.0.0.1:8000"
-        echo "🌐 Frontend: http://127.0.0.1:5173"
+        # Wait a moment for frontend to start
+        sleep 2
         
-        # Open browser if available
-        if command -v xdg-open > /dev/null; then
-            xdg-open http://127.0.0.1:5173
+        echo ""
+        echo "🎉 DataForge Reader is running!"
+        echo "📊 Backend API: http://127.0.0.1:8000"
+        echo "🌐 Frontend: http://127.0.0.1:5173"
+        echo ""
+        
+        # Open browser
+        if command -v xdg-open >/dev/null 2>&1; then
+            xdg-open http://127.0.0.1:5173 >/dev/null 2>&1 &
         fi
         
         # Wait for processes
