@@ -6,12 +6,13 @@ on:
       - 'v*'  # Trigger on version tags like v1.0.0, v1.2.3, etc.
   workflow_dispatch:  # Allow manual triggering
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   build-appimage:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
+    runs-on: ubuntu-22.04
     
     steps:
     - name: Checkout code
@@ -21,45 +22,51 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
         
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3-venv nodejs npm wget imagemagick fuse
+        sudo apt-get install -y python3-venv python3-pip nodejs npm wget imagemagick fuse libfuse2
+        
+    - name: Verify environment
+      run: |
+        echo "� Environment verification:"
+        echo "Node: $(node --version)"
+        echo "NPM: $(npm --version)"  
+        echo "Python: $(python3 --version)"
+        echo "Pip: $(pip3 --version)"
+        echo "Working directory: $(pwd)"
+        ls -la
         
     - name: Install frontend dependencies
-      working-directory: ./frontend
       run: |
+        cd frontend
         echo "📦 Installing frontend dependencies..."
-        npm install --verbose
+        rm -rf node_modules package-lock.json
+        npm install
         echo "✅ Frontend dependencies installed"
         
-    - name: Make build script executable
+    - name: Test frontend build
       run: |
-        chmod +x build-appimage.sh optimize-frontend.sh
-        echo "✅ Build scripts made executable"
-        
-    - name: Debug environment
-      run: |
-        echo "🔍 Environment check:"
-        echo "Node version: $(node --version)"
-        echo "NPM version: $(npm --version)"
-        echo "Python version: $(python3 --version)"
-        echo "Working directory: $(pwd)"
-        echo "Directory contents:"
-        ls -la
+        cd frontend
+        echo "🧪 Testing frontend build..."
+        npm run build
+        echo "✅ Frontend builds successfully"
+        ls -la dist/
       
     - name: Get version from tag
       id: get_version
       run: |
-        if [ "${{ github.ref_type }}" = "tag" ]; then
-          VERSION=${GITHUB_REF#refs/tags/}
-          VERSION=${VERSION#v}  # Remove 'v' prefix if present
+        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          VERSION="${GITHUB_REF#refs/tags/}"
+          VERSION="${VERSION#v}"  # Remove 'v' prefix if present
           echo "🏷️ Extracted version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
         else
@@ -68,17 +75,83 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
         fi
         
-    - name: Optimize frontend
+    - name: Prepare build scripts
       run: |
-        echo "⚡ Optimizing frontend..."
-        ./optimize-frontend.sh
-        echo "✅ Frontend optimized"
-      
-    - name: Build AppImage
+        chmod +x build-appimage.sh optimize-frontend.sh
+        echo "✅ Build scripts made executable"
+        
+    - name: Create simplified AppImage build
       run: |
-        echo "🏗️ Building AppImage with version: ${{ steps.get_version.outputs.version }}"
-        ./build-appimage.sh ${{ steps.get_version.outputs.version }}
-        echo "✅ AppImage build completed"
+        set -e
+        VERSION="${{ steps.get_version.outputs.version }}"
+        echo "🏗️ Building AppImage with version: $VERSION"
+        
+        # Create basic AppDir structure
+        mkdir -p AppDir/opt/DataForge-Reader/backend
+        mkdir -p AppDir/opt/DataForge-Reader/venv
+        
+        # Copy backend files
+        cp -r backend/* AppDir/opt/DataForge-Reader/backend/
+        
+        # Copy frontend build
+        cp -r frontend/dist/* AppDir/opt/DataForge-Reader/
+        
+        # Install Python dependencies in virtual environment
+        cd AppDir/opt/DataForge-Reader
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install -r backend/requirements.txt
+        cd ../../../
+        
+        # Create desktop file
+        cat > AppDir/DataForge-Reader.desktop << EOF
+        [Desktop Entry]
+        Type=Application
+        Name=DataForge Reader
+        Comment=ML Dataset Creation Tool
+        Exec=AppRun
+        Icon=DataForge-Reader
+        Categories=Office;Development;
+        EOF
+        
+        # Create simple AppRun
+        cat > AppDir/AppRun << 'EOF'
+        #!/bin/bash
+        APPDIR="$(dirname "$(readlink -f "$0")")"
+        export PATH="$APPDIR/opt/DataForge-Reader/venv/bin:$PATH"
+        cd "$APPDIR/opt/DataForge-Reader"
+        
+        # Start backend
+        python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8001 &
+        BACKEND_PID=$!
+        
+        # Start simple HTTP server for frontend
+        python3 -m http.server 5174 &
+        FRONTEND_PID=$!
+        
+        echo "🚀 DataForge Reader started!"
+        echo "📊 Backend: http://127.0.0.1:8001"
+        echo "🌐 Frontend: http://127.0.0.1:5174"
+        
+        # Open browser if available
+        if command -v xdg-open > /dev/null; then
+            xdg-open http://127.0.0.1:5174
+        fi
+        
+        # Wait for processes
+        wait $BACKEND_PID $FRONTEND_PID
+        EOF
+        
+        chmod +x AppDir/AppRun
+        
+        # Download and use AppImageTool
+        wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x appimagetool-x86_64.AppImage
+        
+        # Build AppImage
+        ./appimagetool-x86_64.AppImage AppDir DataForge-Reader-$VERSION-x86_64.AppImage
+        
+        echo "✅ AppImage created: DataForge-Reader-$VERSION-x86_64.AppImage"
         
     - name: Verify AppImage
       run: |
