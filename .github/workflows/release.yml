@@ -106,6 +106,9 @@ jobs:
         pip install --upgrade pip
         pip install -r backend/requirements.txt
         
+        # Install additional packages that might be needed
+        pip install requests urllib3 typing-extensions
+        
         # Copy application files to the virtual environment directory
         cp -r backend AppDir/usr/lib/dataforge-reader/
         cp -r frontend/dist/* AppDir/usr/lib/dataforge-reader/
@@ -166,16 +169,16 @@ jobs:
         
         # Start backend server
         echo "📊 Starting backend server on port 8000..."
-        python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --log-level info &
+        python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --log-level info &
         BACKEND_PID=$!
         
         # Wait for backend to be ready
         echo "⏳ Waiting for backend to start..."
         for i in {1..20}; do
-            if curl -s http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
+            if curl -s http://localhost:8000/api/health >/dev/null 2>&1; then
                 echo "✅ Backend is ready!"
                 echo "🧪 Testing templates endpoint..."
-                TEMPLATES_RESPONSE=$(curl -s http://127.0.0.1:8000/api/dataset/templates)
+                TEMPLATES_RESPONSE=$(curl -s http://localhost:8000/api/dataset/templates)
                 echo "Templates response: ${TEMPLATES_RESPONSE:0:100}..."
                 break
             fi
@@ -193,13 +196,13 @@ jobs:
         
         echo ""
         echo "🎉 DataForge Reader is running!"
-        echo "📊 Backend API: http://127.0.0.1:8000"
-        echo "🌐 Frontend: http://127.0.0.1:5173"
+        echo "📊 Backend API: http://localhost:8000"
+        echo "🌐 Frontend: http://localhost:5173"
         echo ""
         
         # Open browser
         if command -v xdg-open >/dev/null 2>&1; then
-            xdg-open http://127.0.0.1:5173 >/dev/null 2>&1 &
+            xdg-open http://localhost:5173 >/dev/null 2>&1 &
         fi
         
         # Wait for processes
