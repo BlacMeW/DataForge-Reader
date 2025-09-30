@@ -3,7 +3,9 @@ import FileUpload from './components/FileUpload'
 import ParseViewer from './components/ParseViewer'
 import DatasetTemplateSelector from './components/DatasetTemplateSelector'
 import CustomTemplateDesigner from './components/CustomTemplateDesigner'
-import { BookOpen, Settings } from 'lucide-react'
+import ProjectManager, { type Project } from './components/ProjectManager'
+import { useKeyboardShortcuts, showKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { BookOpen, Settings, Folder, Keyboard } from 'lucide-react'
 
 export interface UploadedFile {
   file_id: string
@@ -40,12 +42,52 @@ interface DatasetTemplate {
   }
 }
 
-type AppView = 'upload' | 'parse' | 'templates' | 'custom-template'
+type AppView = 'upload' | 'parse' | 'templates' | 'custom-template' | 'projects'
 
 function App() {
   const [currentFile, setCurrentFile] = useState<UploadedFile | null>(null)
   const [currentView, setCurrentView] = useState<AppView>('upload')
   const [selectedTemplate, setSelectedTemplate] = useState<DatasetTemplate | null>(null)
+  const [currentProject, setCurrentProject] = useState<Project | null>(null)
+
+  // Define keyboard shortcuts
+  const keyboardShortcuts = [
+    {
+      key: '1',
+      ctrlKey: true,
+      callback: () => setCurrentView('upload'),
+      description: 'Go to File Upload'
+    },
+    {
+      key: '2', 
+      ctrlKey: true,
+      callback: () => setCurrentView('projects'),
+      description: 'Go to Projects'
+    },
+    {
+      key: '3',
+      ctrlKey: true,
+      callback: () => setCurrentView('templates'),
+      description: 'Go to Templates'
+    },
+    {
+      key: 'h',
+      ctrlKey: true,
+      callback: () => showKeyboardShortcuts(keyboardShortcuts),
+      description: 'Show Keyboard Shortcuts'
+    },
+    {
+      key: 'Escape',
+      callback: () => {
+        if (currentFile) setCurrentFile(null)
+        if (selectedTemplate) setSelectedTemplate(null)
+      },
+      description: 'Close current file/template'
+    }
+  ]
+
+  // Enable keyboard shortcuts
+  useKeyboardShortcuts(keyboardShortcuts, true)
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
@@ -78,6 +120,22 @@ function App() {
               File Upload
             </button>
             <button 
+              onClick={() => setCurrentView('projects')}
+              style={{ 
+                background: currentView === 'projects' ? '#e0e7ff' : 'transparent',
+                color: currentView === 'projects' ? '#1e40af' : '#6b7280',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <Folder size={16} style={{ marginRight: '6px' }} />
+              Projects
+            </button>
+            <button 
               onClick={() => setCurrentView('templates')}
               style={{ 
                 background: currentView === 'templates' ? '#e0e7ff' : 'transparent',
@@ -92,6 +150,25 @@ function App() {
             >
               <Settings size={16} style={{ marginRight: '6px' }} />
               Templates
+            </button>
+            
+            <div style={{ borderLeft: '1px solid #e5e7eb', height: '24px', margin: '0 8px' }}></div>
+            
+            <button 
+              onClick={() => showKeyboardShortcuts(keyboardShortcuts)}
+              style={{ 
+                background: 'none',
+                color: '#6b7280',
+                border: 'none',
+                padding: '8px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+              title="Keyboard Shortcuts (Ctrl+H)"
+            >
+              <Keyboard size={16} />
             </button>
           </div>
         </div>
@@ -159,6 +236,17 @@ function App() {
               setCurrentView('templates')
             }}
             onBack={() => setCurrentView('templates')}
+          />
+        )}
+        
+        {currentView === 'projects' && (
+          <ProjectManager 
+            onProjectSelect={setCurrentProject}
+            onFileSelect={(file) => {
+              setCurrentFile(file)
+              setCurrentView('parse')
+            }}
+            currentProject={currentProject || undefined}
           />
         )}
       </main>

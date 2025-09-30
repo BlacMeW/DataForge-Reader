@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import axios from 'axios'
-import { BookOpen, Loader, AlertCircle, Search, Filter, X } from 'lucide-react'
+import { BookOpen, Loader, AlertCircle, Search, Filter, X, BarChart } from 'lucide-react'
 import type { UploadedFile, ParsedParagraph } from '../App'
 import ExportButtons from './ExportButtons'
+import DataAnalytics from './DataAnalytics'
 
 interface ParseViewerProps {
   file: UploadedFile
@@ -21,6 +22,13 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
     extractionMethod: string
     processingTime: number
   } | null>(null)
+  
+  // Progress tracking
+  const [processingStep, setProcessingStep] = useState<string>('Initializing...')
+  const [processingProgress, setProcessingProgress] = useState<number>(0)
+  
+  // View state
+  const [currentView, setCurrentView] = useState<'content' | 'analytics'>('content')
 
   // Filter states
   const [searchText, setSearchText] = useState<string>('')
@@ -30,6 +38,12 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
   const [minCharCount, setMinCharCount] = useState<string>('')
   const [maxCharCount, setMaxCharCount] = useState<string>('')
   const [showFilters, setShowFilters] = useState<boolean>(false)
+  
+  // Advanced search states
+  const [searchMode, setSearchMode] = useState<'text' | 'regex'>('text')
+  const [caseSensitive, setCaseSensitive] = useState<boolean>(false)
+  const [wholeWords, setWholeWords] = useState<boolean>(false)
+  const [regexError, setRegexError] = useState<string>('')
 
   useEffect(() => {
     parseFile()
@@ -38,22 +52,45 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
   const parseFile = async () => {
     setLoading(true)
     setError('')
+    setProcessingProgress(0)
     
     try {
+      // Step 1: Initialize processing
+      setProcessingStep('Initializing document processing...')
+      setProcessingProgress(10)
+      
+      // Step 2: Send parse request
+      setProcessingStep('Extracting text from document...')
+      setProcessingProgress(30)
+      
       const response = await axios.post(`${API_BASE_URL}/parse`, {
         file_id: file.file_id,
         use_ocr: false
       })
 
+      // Step 3: Processing response
+      setProcessingStep('Organizing extracted content...')
+      setProcessingProgress(70)
+      
       setParagraphs(response.data.paragraphs)
       setProcessingInfo({
         totalPages: response.data.total_pages,
         extractionMethod: response.data.extraction_method,
         processingTime: response.data.processing_time
       })
-      setLoading(false)
+      
+      // Step 4: Complete
+      setProcessingStep('Processing complete!')
+      setProcessingProgress(100)
+      
+      // Small delay to show completion
+      setTimeout(() => {
+        setLoading(false)
+      }, 500)
+      
     } catch (err) {
       setLoading(false)
+      setProcessingProgress(0)
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.detail || 'Failed to parse file')
       } else {
@@ -69,9 +106,34 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
   // Filter paragraphs based on all filter criteria
   const filteredParagraphs = useMemo(() => {
     return paragraphs.filter(paragraph => {
-      // Text search filter
-      if (searchText && !paragraph.text.toLowerCase().includes(searchText.toLowerCase())) {
-        return false
+      // Text search filter with advanced options
+      if (searchText) {
+        let searchMatch = false
+        
+        try {
+          if (searchMode === 'regex') {
+            const flags = caseSensitive ? 'g' : 'gi'
+            const regex = new RegExp(searchText, flags)
+            searchMatch = regex.test(paragraph.text)
+            setRegexError('')
+          } else {
+            // Text search with options
+            const textToSearch = caseSensitive ? paragraph.text : paragraph.text.toLowerCase()
+            const searchTerm = caseSensitive ? searchText : searchText.toLowerCase()
+            
+            if (wholeWords) {
+              const wordRegex = new RegExp(`\\b${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, caseSensitive ? 'g' : 'gi')
+              searchMatch = wordRegex.test(paragraph.text)
+            } else {
+              searchMatch = textToSearch.includes(searchTerm)
+            }
+          }
+        } catch {
+          setRegexError('Invalid regular expression')
+          searchMatch = false
+        }
+        
+        if (!searchMatch) return false
       }
       
       // Page filter
@@ -97,7 +159,7 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
       
       return true
     })
-  }, [paragraphs, searchText, selectedPage, minWordCount, maxWordCount, minCharCount, maxCharCount])
+  }, [paragraphs, searchText, selectedPage, minWordCount, maxWordCount, minCharCount, maxCharCount, searchMode, caseSensitive, wholeWords])
 
   // Clear all filters
   const clearFilters = () => {
@@ -107,6 +169,10 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
     setMaxWordCount('')
     setMinCharCount('')
     setMaxCharCount('')
+    setSearchMode('text')
+    setCaseSensitive(false)
+    setWholeWords(false)
+    setRegexError('')
   }
 
   // Get unique page numbers for filter dropdown
@@ -118,10 +184,53 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
   if (loading) {
     return (
       <div className="container">
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <Loader size={48} color="#3b82f6" />
-          <h3 style={{ marginTop: '20px' }}>Processing your document...</h3>
-          <p>Extracting text content from {file.filename}</p>
+        <div style={{ textAlign: 'center', padding: '60px 20px', maxWidth: '500px', margin: '0 auto' }}>
+          <Loader size={48} color="#3b82f6" style={{ animation: 'spin 1s linear infinite' }} />
+          <h3 style={{ marginTop: '20px', color: '#1e40af' }}>Processing Document</h3>
+          <p style={{ color: '#6b7280', marginBottom: '30px' }}>{file.filename}</p>
+          
+          {/* Progress Bar */}
+          <div style={{
+            width: '100%',
+            height: '8px',
+            backgroundColor: '#e5e7eb',
+            borderRadius: '4px',
+            overflow: 'hidden',
+            marginBottom: '15px'
+          }}>
+            <div style={{
+              width: `${processingProgress}%`,
+              height: '100%',
+              backgroundColor: '#3b82f6',
+              borderRadius: '4px',
+              transition: 'width 0.3s ease-in-out'
+            }} />
+          </div>
+          
+          {/* Progress Text */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            fontSize: '14px',
+            color: '#6b7280'
+          }}>
+            <span>{processingStep}</span>
+            <span>{processingProgress}%</span>
+          </div>
+          
+          {/* Processing Steps Indicator */}
+          <div style={{ marginTop: '30px', display: 'flex', justifyContent: 'center', gap: '10px' }}>
+            {['Init', 'Extract', 'Organize', 'Complete'].map((step, index) => (
+              <div key={step} style={{
+                width: '12px',
+                height: '12px',
+                borderRadius: '50%',
+                backgroundColor: processingProgress > (index * 25) ? '#3b82f6' : '#e5e7eb',
+                transition: 'background-color 0.3s ease'
+              }} />
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -166,9 +275,9 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
           <>
             <div style={{ borderLeft: '1px solid #ccc', height: '30px', margin: '0 10px' }}></div>
             <button 
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={() => setCurrentView(currentView === 'content' ? 'analytics' : 'content')}
               style={{
-                backgroundColor: showFilters ? '#3b82f6' : '#6b7280',
+                backgroundColor: currentView === 'analytics' ? '#10b981' : '#6b7280',
                 color: 'white',
                 padding: '8px 16px',
                 border: 'none',
@@ -179,9 +288,28 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
                 gap: '6px'
               }}
             >
-              <Filter size={16} />
-              {showFilters ? 'Hide Filters' : 'Show Filters'}
+              <BarChart size={16} />
+              {currentView === 'analytics' ? 'Show Content' : 'Show Analytics'}
             </button>
+            {currentView === 'content' && (
+              <button 
+                onClick={() => setShowFilters(!showFilters)}
+                style={{
+                  backgroundColor: showFilters ? '#3b82f6' : '#6b7280',
+                  color: 'white',
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Filter size={16} />
+                {showFilters ? 'Hide Filters' : 'Show Filters'}
+              </button>
+            )}
             <ExportButtons fileId={file.file_id} disabled={filteredParagraphs.length === 0} />
           </>
         )}
@@ -222,25 +350,95 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-            {/* Text Search */}
-            <div>
+            {/* Advanced Text Search */}
+            <div style={{ gridColumn: 'span 2' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
                 <Search size={16} style={{ display: 'inline', marginRight: '5px' }} />
-                Search Text
+                Advanced Search
               </label>
+              
+              {/* Search Mode Toggle */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                <button
+                  onClick={() => setSearchMode('text')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    backgroundColor: searchMode === 'text' ? '#3b82f6' : 'white',
+                    color: searchMode === 'text' ? 'white' : '#374151',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Text
+                </button>
+                <button
+                  onClick={() => setSearchMode('regex')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    backgroundColor: searchMode === 'regex' ? '#3b82f6' : 'white',
+                    color: searchMode === 'regex' ? 'white' : '#374151',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Regex
+                </button>
+              </div>
+              
+              {/* Search Input */}
               <input
                 type="text"
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                placeholder="Search in paragraph text..."
+                placeholder={searchMode === 'regex' ? 'Enter regular expression...' : 'Search in paragraph text...'}
                 style={{
                   width: '100%',
                   padding: '8px 12px',
-                  border: '1px solid #d1d5db',
+                  border: `1px solid ${regexError ? '#dc2626' : '#d1d5db'}`,
                   borderRadius: '4px',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  marginBottom: '8px'
                 }}
               />
+              
+              {/* Regex Error */}
+              {regexError && (
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: '#dc2626', 
+                  marginBottom: '8px' 
+                }}>
+                  {regexError}
+                </div>
+              )}
+              
+              {/* Search Options */}
+              <div style={{ display: 'flex', gap: '16px', fontSize: '14px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={caseSensitive}
+                    onChange={(e) => setCaseSensitive(e.target.checked)}
+                    style={{ marginRight: '6px' }}
+                  />
+                  Case sensitive
+                </label>
+                {searchMode === 'text' && (
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={wholeWords}
+                      onChange={(e) => setWholeWords(e.target.checked)}
+                      style={{ marginRight: '6px' }}
+                    />
+                    Whole words
+                  </label>
+                )}
+              </div>
             </div>
 
             {/* Page Filter */}
@@ -356,82 +554,91 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
         </div>
       )}
 
-      <div className="parse-viewer">
-        <h3>
-          Extracted Text ({filteredParagraphs.length} paragraphs
-          {filteredParagraphs.length !== paragraphs.length && (
-            <span style={{ color: '#6b7280', fontWeight: 'normal' }}>
-              {' '}of {paragraphs.length} total
-            </span>
-          )})
-        </h3>
-        
-        {paragraphs.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <p>No text content found in this document.</p>
-            <button onClick={() => parseFile()}>Try with OCR</button>
-          </div>
-        ) : filteredParagraphs.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <p>No paragraphs match your current filters.</p>
-            <button onClick={clearFilters} style={{ 
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}>
-              Clear Filters
-            </button>
-          </div>
-        ) : (
-          <div>
-            {filteredParagraphs.map((paragraph) => (
-              <div
-                key={paragraph.id}
-                className={`paragraph ${selectedParagraph === paragraph.id ? 'selected' : ''}`}
-                onClick={() => handleParagraphClick(paragraph.id)}
-                style={{ cursor: 'pointer' }}
-              >
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>
-                  Page {paragraph.page} • Paragraph {paragraph.paragraph_index + 1} • 
-                  {paragraph.word_count} words • {paragraph.char_count} chars
-                </div>
-                <div>{paragraph.text}</div>
-                
-                {selectedParagraph === paragraph.id && (
-                  <div style={{ 
-                    marginTop: '10px', 
-                    padding: '10px', 
-                    background: '#f8f9fa',
-                    borderRadius: '4px',
-                    border: '1px solid #e9ecef'
-                  }}>
-                    <strong>Paragraph Details:</strong>
-                    <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
-                      <li>ID: {paragraph.id}</li>
-                      <li>Page: {paragraph.page}</li>
-                      <li>Index: {paragraph.paragraph_index}</li>
-                      <li>Word count: {paragraph.word_count}</li>
-                      <li>Character count: {paragraph.char_count}</li>
-                    </ul>
-                    <button 
-                      style={{ marginTop: '10px' }}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        alert('Annotation feature coming soon!')
-                      }}
-                    >
-                      Add Annotation
-                    </button>
+      {/* Main Content Area */}
+      {currentView === 'analytics' ? (
+        <DataAnalytics 
+          paragraphs={paragraphs}
+          filename={file.filename}
+          processingInfo={processingInfo || undefined}
+        />
+      ) : (
+        <div className="parse-viewer">
+          <h3>
+            Extracted Text ({filteredParagraphs.length} paragraphs
+            {filteredParagraphs.length !== paragraphs.length && (
+              <span style={{ color: '#6b7280', fontWeight: 'normal' }}>
+                {' '}of {paragraphs.length} total
+              </span>
+            )})
+          </h3>
+          
+          {paragraphs.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <p>No text content found in this document.</p>
+              <button onClick={() => parseFile()}>Try with OCR</button>
+            </div>
+          ) : filteredParagraphs.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <p>No paragraphs match your current filters.</p>
+              <button onClick={clearFilters} style={{ 
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                padding: '10px 20px',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}>
+                Clear Filters
+              </button>
+            </div>
+          ) : (
+            <div>
+              {filteredParagraphs.map((paragraph) => (
+                <div
+                  key={paragraph.id}
+                  className={`paragraph ${selectedParagraph === paragraph.id ? 'selected' : ''}`}
+                  onClick={() => handleParagraphClick(paragraph.id)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>
+                    Page {paragraph.page} • Paragraph {paragraph.paragraph_index + 1} • 
+                    {paragraph.word_count} words • {paragraph.char_count} chars
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                  <div>{paragraph.text}</div>
+                  
+                  {selectedParagraph === paragraph.id && (
+                    <div style={{ 
+                      marginTop: '10px', 
+                      padding: '10px', 
+                      background: '#f8f9fa',
+                      borderRadius: '4px',
+                      border: '1px solid #e9ecef'
+                    }}>
+                      <strong>Paragraph Details:</strong>
+                      <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                        <li>ID: {paragraph.id}</li>
+                        <li>Page: {paragraph.page}</li>
+                        <li>Index: {paragraph.paragraph_index}</li>
+                        <li>Word count: {paragraph.word_count}</li>
+                        <li>Character count: {paragraph.char_count}</li>
+                      </ul>
+                      <button 
+                        style={{ marginTop: '10px' }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          alert('Annotation feature coming soon!')
+                        }}
+                      >
+                        Add Annotation
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
