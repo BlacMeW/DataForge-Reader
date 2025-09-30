@@ -9,6 +9,9 @@ on:
 jobs:
   build-appimage:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     
     steps:
     - name: Checkout code
@@ -31,10 +34,25 @@ jobs:
         
     - name: Install frontend dependencies
       working-directory: ./frontend
-      run: npm install
-      
+      run: |
+        echo "📦 Installing frontend dependencies..."
+        npm install --verbose
+        echo "✅ Frontend dependencies installed"
+        
     - name: Make build script executable
-      run: chmod +x build-appimage.sh optimize-frontend.sh
+      run: |
+        chmod +x build-appimage.sh optimize-frontend.sh
+        echo "✅ Build scripts made executable"
+        
+    - name: Debug environment
+      run: |
+        echo "🔍 Environment check:"
+        echo "Node version: $(node --version)"
+        echo "NPM version: $(npm --version)"
+        echo "Python version: $(python3 --version)"
+        echo "Working directory: $(pwd)"
+        echo "Directory contents:"
+        ls -la
       
     - name: Get version from tag
       id: get_version
@@ -42,16 +60,25 @@ jobs:
         if [ "${{ github.ref_type }}" = "tag" ]; then
           VERSION=${GITHUB_REF#refs/tags/}
           VERSION=${VERSION#v}  # Remove 'v' prefix if present
+          echo "🏷️ Extracted version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
         else
-          echo "version=dev-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+          VERSION="dev-$(date +%Y%m%d-%H%M%S)"
+          echo "🏷️ Generated dev version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
         fi
         
     - name: Optimize frontend
-      run: ./optimize-frontend.sh
+      run: |
+        echo "⚡ Optimizing frontend..."
+        ./optimize-frontend.sh
+        echo "✅ Frontend optimized"
       
     - name: Build AppImage
-      run: ./build-appimage.sh ${{ steps.get_version.outputs.version }}
+      run: |
+        echo "🏗️ Building AppImage with version: ${{ steps.get_version.outputs.version }}"
+        ./build-appimage.sh ${{ steps.get_version.outputs.version }}
+        echo "✅ AppImage build completed"
         
     - name: Verify AppImage
       run: |

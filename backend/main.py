@@ -2,9 +2,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-# Create necessary directories
-os.makedirs("../storage/uploads", exist_ok=True)
-os.makedirs("../dataset_exports", exist_ok=True)
+# Create necessary directories - handle both regular and AppImage execution
+try:
+    os.makedirs("../storage/uploads", exist_ok=True)
+    os.makedirs("../dataset_exports", exist_ok=True)
+except (OSError, PermissionError):
+    # If we can't create in parent directory (like in AppImage), use temp directories
+    import tempfile
+    temp_dir = tempfile.gettempdir()
+    os.makedirs(os.path.join(temp_dir, "dataforge_storage", "uploads"), exist_ok=True)
+    os.makedirs(os.path.join(temp_dir, "dataforge_exports"), exist_ok=True)
+    print(f"Using temporary directories: {temp_dir}/dataforge_*")
 
 app = FastAPI(
     title="DataForge Reader API",
