@@ -137,21 +137,36 @@ jobs:
         export PATH="$APPDIR/opt/DataForge-Reader/venv/bin:$PATH"
         cd "$APPDIR/opt/DataForge-Reader"
         
-        # Start backend
-        python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8001 &
+        # Create startup script with proper error handling
+        echo "🚀 Starting DataForge Reader..."
+        
+        # Start backend on port 8000 (matches frontend expectations)
+        echo "📊 Starting backend server..."
+        python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --log-level info &
         BACKEND_PID=$!
         
+        # Wait for backend to start and test connection
+        echo "⏳ Waiting for backend to initialize..."
+        for i in {1..10}; do
+          if curl -s http://127.0.0.1:8000/api/health > /dev/null 2>&1; then
+            echo "✅ Backend is ready!"
+            break
+          fi
+          sleep 1
+        done
+        
         # Start simple HTTP server for frontend
-        python3 -m http.server 5174 &
+        echo "🌐 Starting frontend server..."
+        python3 -m http.server 5173 &
         FRONTEND_PID=$!
         
         echo "🚀 DataForge Reader started!"
-        echo "📊 Backend: http://127.0.0.1:8001"
-        echo "🌐 Frontend: http://127.0.0.1:5174"
+        echo "📊 Backend: http://127.0.0.1:8000"
+        echo "🌐 Frontend: http://127.0.0.1:5173"
         
         # Open browser if available
         if command -v xdg-open > /dev/null; then
-            xdg-open http://127.0.0.1:5174
+            xdg-open http://127.0.0.1:5173
         fi
         
         # Wait for processes

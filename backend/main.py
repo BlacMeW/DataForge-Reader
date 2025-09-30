@@ -49,6 +49,10 @@ except ImportError as e:
 def root():
     return {"message": "DataForge Reader API is running"}
 
+@app.get("/api/health")
+def health_check():
+    return {"status": "healthy", "message": "DataForge Reader API is running"}
+
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
