@@ -118,7 +118,7 @@ function App() {
                 fontWeight: '500',
                 marginTop: '2px' 
               }}>
-                v1.0.9
+                v1.0.10
               </div>
             </div>
           </div>
