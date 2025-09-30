@@ -114,6 +114,12 @@ jobs:
         Categories=Office;Development;
         EOF
         
+        # Create simple application icon (256x256 PNG)
+        convert -size 256x256 xc:transparent -fill '#2563eb' -draw 'roundrectangle 20,20 236,236 20,20' \
+                -fill white -pointsize 32 -gravity center -annotate +0-20 'DF' \
+                -fill white -pointsize 16 -gravity center -annotate +0+20 'Reader' \
+                AppDir/DataForge-Reader.png
+        
         # Create simple AppRun
         cat > AppDir/AppRun << 'EOF'
         #!/bin/bash
