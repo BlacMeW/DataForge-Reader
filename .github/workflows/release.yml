@@ -114,11 +114,21 @@ jobs:
         Categories=Office;Development;
         EOF
         
-        # Create simple application icon (256x256 PNG)
-        convert -size 256x256 xc:transparent -fill '#2563eb' -draw 'roundrectangle 20,20 236,236 20,20' \
-                -fill white -pointsize 32 -gravity center -annotate +0-20 'DF' \
-                -fill white -pointsize 16 -gravity center -annotate +0+20 'Reader' \
-                AppDir/DataForge-Reader.png
+        # Create simple application icon (256x256 PNG) - fallback approach
+        if ! convert -size 256x256 xc:'#2563eb' -fill white -draw 'circle 128,128 64,64' AppDir/DataForge-Reader.png 2>/dev/null; then
+          # Fallback: create basic solid color icon
+          convert -size 256x256 xc:'#2563eb' AppDir/DataForge-Reader.png 2>/dev/null || {
+            # Ultimate fallback: create SVG icon
+            cat > AppDir/DataForge-Reader.svg << 'SVGEOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
+          <rect width="256" height="256" fill="#2563eb" rx="32"/>
+          <circle cx="128" cy="128" r="64" fill="white"/>
+        </svg>
+        SVGEOF
+            echo "Created SVG icon as fallback"
+          }
+        fi
         
         # Create simple AppRun
         cat > AppDir/AppRun << 'EOF'
