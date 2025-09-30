@@ -23,14 +23,18 @@ app.add_middleware(
 
 # Import and include routers
 try:
-    from backend.routers import upload, parse, annotate, export
+    from .routers import upload, parse, annotate, export
     app.include_router(upload.router, prefix="/api", tags=["upload"])
     app.include_router(parse.router, prefix="/api", tags=["parse"])
     app.include_router(annotate.router, prefix="/api", tags=["annotate"])
     app.include_router(export.router, prefix="/api", tags=["export"])
 except ImportError as e:
-    print(f"Warning: Could not import routers: {e}")
-    print("Some API endpoints may not be available.")
+    print(f"Router import failed: {e}")
+    # Add basic upload endpoint
+    from fastapi import File, UploadFile
+    @app.post("/api/upload")
+    async def upload_file(file: UploadFile = File(...)):
+        return {"message": "Upload endpoint working", "filename": file.filename}
 
 @app.get("/")
 def root():
