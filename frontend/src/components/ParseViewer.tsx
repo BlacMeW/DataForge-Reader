@@ -333,77 +333,126 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
         )}
       </div>
 
-      {/* Filter Panel */}
+      {/* Filter Panel - Improved UI/UX */}
       {paragraphs.length > 0 && showFilters && (
         <div style={{
-          background: '#f8f9fa',
-          border: '1px solid #e9ecef',
-          borderRadius: '8px',
-          padding: '20px',
-          marginBottom: '20px'
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+          border: '1px solid #e2e8f0',
+          borderRadius: '12px',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+          marginBottom: '24px',
+          overflow: 'hidden'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Filter size={20} />
-              Filter Paragraphs
-            </h4>
+          {/* Filter Header */}
+          <div style={{ 
+            background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+            borderBottom: '1px solid #e2e8f0',
+            padding: '16px 20px', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center' 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Filter size={18} color="#3b82f6" />
+              <h4 style={{ 
+                margin: 0, 
+                fontSize: '16px', 
+                fontWeight: '600',
+                color: '#1e293b'
+              }}>
+                Filter & Search Options
+              </h4>
+              <span style={{ 
+                fontSize: '12px', 
+                color: '#64748b',
+                background: '#e2e8f0',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontWeight: '500'
+              }}>
+                {filteredParagraphs.length} / {paragraphs.length} results
+              </span>
+            </div>
             <button
               onClick={clearFilters}
               style={{
-                backgroundColor: '#dc2626',
+                backgroundColor: '#ef4444',
                 color: 'white',
-                padding: '6px 12px',
+                padding: '8px 12px',
                 border: 'none',
-                borderRadius: '4px',
+                borderRadius: '8px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                fontSize: '14px'
+                fontSize: '13px',
+                fontWeight: '500',
+                transition: 'background-color 0.2s'
               }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
             >
               <X size={14} />
               Clear All
             </button>
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+          {/* Filter Content */}
+          <div style={{ padding: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
             {/* Advanced Text Search */}
-            <div style={{ gridColumn: 'span 2' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
-                <Search size={16} style={{ display: 'inline', marginRight: '5px' }} />
-                Advanced Search
+            <div style={{ 
+              gridColumn: 'span 2',
+              background: '#f8fafc',
+              padding: '16px',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0'
+            }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                marginBottom: '12px', 
+                fontWeight: '600',
+                color: '#374151',
+                fontSize: '14px'
+              }}>
+                <Search size={16} style={{ marginRight: '8px', color: '#3b82f6' }} />
+                Text Search
               </label>
               
               {/* Search Mode Toggle */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
                 <button
                   onClick={() => setSearchMode('text')}
                   style={{
-                    padding: '4px 8px',
+                    padding: '6px 12px',
                     fontSize: '12px',
                     border: '1px solid #d1d5db',
-                    borderRadius: '4px',
+                    borderRadius: '6px',
                     backgroundColor: searchMode === 'text' ? '#3b82f6' : 'white',
                     color: searchMode === 'text' ? 'white' : '#374151',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    transition: 'all 0.2s'
                   }}
                 >
-                  Text
+                  📝 Text
                 </button>
                 <button
                   onClick={() => setSearchMode('regex')}
                   style={{
-                    padding: '4px 8px',
+                    padding: '6px 12px',
                     fontSize: '12px',
                     border: '1px solid #d1d5db',
-                    borderRadius: '4px',
+                    borderRadius: '6px',
                     backgroundColor: searchMode === 'regex' ? '#3b82f6' : 'white',
                     color: searchMode === 'regex' ? 'white' : '#374151',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    transition: 'all 0.2s'
                   }}
                 >
-                  Regex
+                  🔍 Regex
                 </button>
               </div>
               
@@ -415,11 +464,20 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
                 placeholder={searchMode === 'regex' ? 'Enter regular expression...' : 'Search in paragraph text...'}
                 style={{
                   width: '100%',
-                  padding: '8px 12px',
-                  border: `1px solid ${regexError ? '#dc2626' : '#d1d5db'}`,
-                  borderRadius: '4px',
+                  padding: '10px 14px',
+                  border: `2px solid ${regexError ? '#ef4444' : '#e2e8f0'}`,
+                  borderRadius: '8px',
                   fontSize: '14px',
-                  marginBottom: '8px'
+                  marginBottom: '10px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  backgroundColor: 'white'
+                }}
+                onFocus={(e) => {
+                  if (!regexError) e.target.style.borderColor = '#3b82f6'
+                }}
+                onBlur={(e) => {
+                  if (!regexError) e.target.style.borderColor = '#e2e8f0'
                 }}
               />
               
@@ -427,31 +485,55 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
               {regexError && (
                 <div style={{ 
                   fontSize: '12px', 
-                  color: '#dc2626', 
-                  marginBottom: '8px' 
+                  color: '#ef4444', 
+                  marginBottom: '10px',
+                  background: '#fef2f2',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #fecaca'
                 }}>
-                  {regexError}
+                  ⚠️ {regexError}
                 </div>
               )}
               
               {/* Search Options */}
-              <div style={{ display: 'flex', gap: '16px', fontSize: '14px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', gap: '16px', fontSize: '13px' }}>
+                <label style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                  color: '#475569'
+                }}>
                   <input
                     type="checkbox"
                     checked={caseSensitive}
                     onChange={(e) => setCaseSensitive(e.target.checked)}
-                    style={{ marginRight: '6px' }}
+                    style={{ 
+                      marginRight: '6px',
+                      width: '14px',
+                      height: '14px' 
+                    }}
                   />
                   Case sensitive
                 </label>
                 {searchMode === 'text' && (
-                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                  <label style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    color: '#475569'
+                  }}>
                     <input
                       type="checkbox"
                       checked={wholeWords}
                       onChange={(e) => setWholeWords(e.target.checked)}
-                      style={{ marginRight: '6px' }}
+                      style={{ 
+                        marginRight: '6px',
+                        width: '14px',
+                        height: '14px' 
+                      }}
                     />
                     Whole words
                   </label>
@@ -460,34 +542,63 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
             </div>
 
             {/* Page Filter */}
-            <div>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
-                📄 Page
+            <div style={{
+              background: '#f1f5f9',
+              padding: '14px',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0'
+            }}>
+              <label style={{ 
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '8px', 
+                fontWeight: '600',
+                fontSize: '14px',
+                color: '#374151'
+              }}>
+                📄 Page Filter
               </label>
               <select
                 value={selectedPage}
                 onChange={(e) => setSelectedPage(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  fontSize: '14px'
+                  padding: '10px 12px',
+                  border: '2px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                  outline: 'none'
                 }}
+                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
               >
-                <option value="all">All Pages</option>
+                <option value="all">🌐 All Pages</option>
                 {availablePages.map(page => (
-                  <option key={page} value={page.toString()}>Page {page}</option>
+                  <option key={page} value={page.toString()}>📄 Page {page}</option>
                 ))}
               </select>
             </div>
 
             {/* Word Count Range */}
-            <div>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
-                📝 Word Count
+            <div style={{
+              background: '#f0fdf4',
+              padding: '14px',
+              borderRadius: '8px',
+              border: '1px solid #dcfce7'
+            }}>
+              <label style={{ 
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '8px', 
+                fontWeight: '600',
+                fontSize: '14px',
+                color: '#374151'
+              }}>
+                📝 Word Count Range
               </label>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <input
                   type="number"
                   value={minWordCount}
@@ -495,12 +606,13 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
                   placeholder="Min"
                   style={{
                     flex: 1,
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
+                    padding: '10px 12px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
                     fontSize: '14px'
                   }}
                 />
+                <span style={{ color: '#64748b', fontSize: '12px', fontWeight: '500' }}>to</span>
                 <input
                   type="number"
                   value={maxWordCount}
@@ -508,21 +620,37 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
                   placeholder="Max"
                   style={{
                     flex: 1,
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
-                    fontSize: '14px'
+                    padding: '10px 12px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    backgroundColor: 'white',
+                    outline: 'none'
                   }}
+                  onFocus={(e) => e.target.style.borderColor = '#10b981'}
+                  onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                 />
               </div>
             </div>
 
             {/* Character Count Range */}
-            <div>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
-                🔤 Character Count
+            <div style={{
+              background: '#fef3c7',
+              padding: '14px',
+              borderRadius: '8px',
+              border: '1px solid #fde68a'
+            }}>
+              <label style={{ 
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '8px', 
+                fontWeight: '600',
+                fontSize: '14px',
+                color: '#374151'
+              }}>
+                🔤 Character Count Range
               </label>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <input
                   type="number"
                   value={minCharCount}
@@ -530,12 +658,17 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
                   placeholder="Min"
                   style={{
                     flex: 1,
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
-                    fontSize: '14px'
+                    padding: '10px 12px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    backgroundColor: 'white',
+                    outline: 'none'
                   }}
+                  onFocus={(e) => e.target.style.borderColor = '#f59e0b'}
+                  onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                 />
+                <span style={{ color: '#64748b', fontSize: '12px', fontWeight: '500' }}>to</span>
                 <input
                   type="number"
                   value={maxCharCount}
@@ -543,31 +676,37 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
                   placeholder="Max"
                   style={{
                     flex: 1,
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
-                    fontSize: '14px'
+                    padding: '10px 12px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    backgroundColor: 'white',
+                    outline: 'none'
                   }}
+                  onFocus={(e) => e.target.style.borderColor = '#f59e0b'}
+                  onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                 />
               </div>
             </div>
           </div>
 
-          {/* Filter Results Summary */}
-          <div style={{ 
-            marginTop: '15px', 
-            padding: '10px', 
-            background: '#e0f2fe', 
-            borderRadius: '4px',
-            fontSize: '14px',
-            color: '#0369a1'
-          }}>
-            <strong>Filter Results:</strong> Showing {filteredParagraphs.length} of {paragraphs.length} paragraphs
-            {filteredParagraphs.length !== paragraphs.length && (
-              <span style={{ marginLeft: '10px', color: '#dc2626' }}>
-                ({paragraphs.length - filteredParagraphs.length} filtered out)
-              </span>
-            )}
+            {/* Filter Results Summary */}
+            <div style={{ 
+              marginTop: '20px', 
+              padding: '12px 16px', 
+              background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', 
+              borderRadius: '8px',
+              fontSize: '13px',
+              color: '#1e40af',
+              border: '1px solid #93c5fd'
+            }}>
+              <strong>Results:</strong> Showing {filteredParagraphs.length} of {paragraphs.length} paragraphs
+              {filteredParagraphs.length !== paragraphs.length && (
+                <span style={{ marginLeft: '10px', color: '#dc2626', fontWeight: '500' }}>
+                  ({paragraphs.length - filteredParagraphs.length} filtered out)
+                </span>
+              )}
+            </div>
           </div>
         </div>
       )}

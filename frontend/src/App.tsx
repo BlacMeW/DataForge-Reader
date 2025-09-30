@@ -110,7 +110,17 @@ function App() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <BookOpen size={32} color="#1e40af" style={{ marginRight: '12px' }} />
-            <h1 style={{ margin: 0, fontSize: '28px' }}>DataForge Reader</h1>
+            <div>
+              <h1 style={{ margin: 0, fontSize: '28px' }}>DataForge Reader</h1>
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#6b7280', 
+                fontWeight: '500',
+                marginTop: '2px' 
+              }}>
+                v1.0.8
+              </div>
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <button 
