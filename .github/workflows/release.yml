@@ -139,20 +139,33 @@ jobs:
         
         # Create startup script with proper error handling
         echo "🚀 Starting DataForge Reader..."
+        echo "📁 Working directory: $(pwd)"
+        echo "📁 Directory contents:"
+        ls -la
+        echo "📁 Backend directory:"
+        ls -la backend/
+        
+        # Set PYTHONPATH to ensure proper module resolution
+        export PYTHONPATH="$PWD:$PWD/backend:$PYTHONPATH"
+        echo "🐍 PYTHONPATH: $PYTHONPATH"
         
         # Start backend on port 8000 (matches frontend expectations)
         echo "📊 Starting backend server..."
-        python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --log-level info &
+        python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --log-level debug 2>&1 | tee backend.log &
         BACKEND_PID=$!
         
         # Wait for backend to start and test connection
         echo "⏳ Waiting for backend to initialize..."
-        for i in {1..10}; do
+        for i in {1..15}; do
           if curl -s http://127.0.0.1:8000/api/health > /dev/null 2>&1; then
             echo "✅ Backend is ready!"
+            # Test the templates endpoint specifically
+            echo "🧪 Testing templates endpoint..."
+            curl -s http://127.0.0.1:8000/api/dataset/templates | head -100
             break
           fi
-          sleep 1
+          echo "⏳ Attempt $i/15 - Backend not ready yet..."
+          sleep 2
         done
         
         # Start simple HTTP server for frontend
