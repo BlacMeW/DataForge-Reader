@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 
 # Create necessary directories - handle both regular and AppImage execution
-storage_dir = "../storage"
-uploads_dir = "../storage/uploads"
-exports_dir = "../dataset_exports"
+storage_dir = "./storage"
+uploads_dir = "./storage/uploads"
+exports_dir = "./dataset_exports"
 
 try:
     os.makedirs(uploads_dir, exist_ok=True)

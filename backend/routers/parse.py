@@ -8,6 +8,8 @@ from pdf2image import convert_from_path
 from PIL import Image
 import tempfile
 import re
+import json
+import time
 
 # Get upload directory from environment variable or use default
 def get_upload_dir():
