@@ -6,6 +6,7 @@ import CustomTemplateDesigner from './components/CustomTemplateDesigner'
 import ProjectManager, { type Project } from './components/ProjectManager'
 import UserGuide from './components/UserGuide'
 import DataMining from './components/DataMining'
+import ProjectAnalytics from './components/ProjectAnalytics'
 import { useKeyboardShortcuts, showKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { BookOpen, Settings, Folder, Keyboard, HelpCircle, Sparkles } from 'lucide-react'
 
@@ -53,6 +54,7 @@ function App() {
   const [currentProject, setCurrentProject] = useState<Project | null>(null)
   const [showUserGuide, setShowUserGuide] = useState<boolean>(false)
   const [showDataMining, setShowDataMining] = useState<boolean>(false)
+  const [showProjectAnalytics, setShowProjectAnalytics] = useState<boolean>(false)
   const [paragraphs, setParagraphs] = useState<ParsedParagraph[]>([])
 
   // Define keyboard shortcuts
@@ -304,7 +306,13 @@ function App() {
         
         {currentView === 'projects' && (
           <ProjectManager 
-            onProjectSelect={setCurrentProject}
+            onProjectSelect={(project) => {
+              setCurrentProject(project)
+              // Automatically show analytics when selecting a project with files
+              if (project.files.length > 0) {
+                setShowProjectAnalytics(true)
+              }
+            }}
             onFileSelect={(file) => {
               setCurrentFile(file)
               setCurrentView('parse')
@@ -337,6 +345,14 @@ function App() {
         <DataMining 
           paragraphs={paragraphs}
           onClose={() => setShowDataMining(false)}
+        />
+      )}
+
+      {/* Project Analytics Modal */}
+      {showProjectAnalytics && currentProject && currentProject.files.length > 0 && (
+        <ProjectAnalytics 
+          project={currentProject}
+          onClose={() => setShowProjectAnalytics(false)}
         />
       )}
     </div>

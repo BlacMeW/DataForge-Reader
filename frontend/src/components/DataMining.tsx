@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Sparkles, Tag, Heart, TrendingUp, Loader, AlertCircle, X, CheckSquare, Square } from 'lucide-react'
+import { Sparkles, Tag, Heart, TrendingUp, Loader, AlertCircle, X, CheckSquare, Square, List, Cloud } from 'lucide-react'
+import ReactWordcloud from 'react-wordcloud'
 import type { ParsedParagraph } from '../App'
 import {
   analyzeSingleText,
@@ -24,6 +25,7 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
   const [useCustomText, setUseCustomText] = useState<boolean>(false)
   const [useBatchMode, setUseBatchMode] = useState<boolean>(false)
   const [showHighlighting, setShowHighlighting] = useState<boolean>(true)
+  const [keywordViewMode, setKeywordViewMode] = useState<'list' | 'cloud'>('cloud')
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [batchResult, setBatchResult] = useState<BatchAnalysisResult | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
@@ -46,6 +48,110 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
     setSelectedParagraphs([])
   }
 
+  // Helper function to merge multiple batch results into one
+  const mergeChunkResults = (chunks: BatchAnalysisResult[]): BatchAnalysisResult => {
+    if (chunks.length === 0) {
+      throw new Error('No chunks to merge')
+    }
+    
+    if (chunks.length === 1) {
+      return chunks[0]
+    }
+    
+    // Merge all chunk results
+    const merged: BatchAnalysisResult = {
+      total_texts: 0,
+      individual_results: [],
+      aggregated_entities: [],
+      aggregated_keywords: [],
+      aggregated_sentiment: {
+        positive_count: 0,
+        negative_count: 0,
+        neutral_count: 0,
+        average_score: 0
+      },
+      aggregated_statistics: {
+        total_words: 0,
+        total_chars: 0,
+        total_sentences: 0,
+        avg_word_length: 0,
+        avg_sentence_length: 0,
+        total_unique_words: 0,
+        avg_lexical_diversity: 0
+      }
+    }
+    
+    // Merge individual results
+    chunks.forEach(chunk => {
+      merged.total_texts += chunk.total_texts
+      if (chunk.individual_results) {
+        merged.individual_results.push(...chunk.individual_results)
+      }
+    })
+    
+    // Merge entities (count occurrences)
+    const entityMap = new Map<string, { text: string; label: string; start: number; end: number; confidence: number }>()
+    chunks.forEach(chunk => {
+      chunk.aggregated_entities?.forEach(entity => {
+        const key = `${entity.text}_${entity.label}`
+        if (entityMap.has(key)) {
+          const existing = entityMap.get(key)!
+          existing.confidence = (existing.confidence + entity.confidence) / 2
+        } else {
+          entityMap.set(key, { ...entity, start: 0, end: 0 })
+        }
+      })
+    })
+    merged.aggregated_entities = Array.from(entityMap.values())
+    
+    // Merge keywords (sum scores)
+    const keywordMap = new Map<string, { keyword: string; score: number; type: string }>()
+    chunks.forEach(chunk => {
+      chunk.aggregated_keywords?.forEach(keyword => {
+        if (keywordMap.has(keyword.keyword)) {
+          const existing = keywordMap.get(keyword.keyword)!
+          existing.score += keyword.score
+        } else {
+          keywordMap.set(keyword.keyword, { ...keyword })
+        }
+      })
+    })
+    merged.aggregated_keywords = Array.from(keywordMap.values())
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 30) // Top 30 keywords
+    
+    // Merge sentiment
+    let totalScore = 0
+    chunks.forEach(chunk => {
+      if (chunk.aggregated_sentiment) {
+        merged.aggregated_sentiment!.positive_count += chunk.aggregated_sentiment.positive_count
+        merged.aggregated_sentiment!.negative_count += chunk.aggregated_sentiment.negative_count
+        merged.aggregated_sentiment!.neutral_count += chunk.aggregated_sentiment.neutral_count
+        totalScore += chunk.aggregated_sentiment.average_score * chunk.total_texts
+      }
+    })
+    merged.aggregated_sentiment!.average_score = totalScore / merged.total_texts
+    
+    // Merge statistics
+    chunks.forEach(chunk => {
+      if (chunk.aggregated_statistics) {
+        merged.aggregated_statistics!.total_words += chunk.aggregated_statistics.total_words
+        merged.aggregated_statistics!.total_chars += chunk.aggregated_statistics.total_chars
+        merged.aggregated_statistics!.total_sentences += chunk.aggregated_statistics.total_sentences
+      }
+    })
+    
+    // Calculate averages for statistics
+    if (merged.aggregated_statistics) {
+      merged.aggregated_statistics.avg_word_length = 
+        merged.aggregated_statistics.total_chars / merged.aggregated_statistics.total_words
+      merged.aggregated_statistics.avg_sentence_length = 
+        merged.aggregated_statistics.total_words / merged.aggregated_statistics.total_sentences
+    }
+    
+    return merged
+  }
+
   const handleAnalyze = async () => {
     setLoading(true)
     setError('')
@@ -64,16 +170,53 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
           .filter(p => selectedParagraphs.includes(p.id))
           .map(p => p.text)
 
-        const result = await analyzeBatchTexts(textsToAnalyze, {
-          include_entities: true,
-          include_keywords: true,
-          include_sentiment: true,
-          include_statistics: true,
-          include_summary: true,
-          top_keywords: 10
-        })
+        // Check if batch is too large and needs chunking
+        const MAX_BATCH_SIZE = 100 // Backend limit
+        
+        if (textsToAnalyze.length > MAX_BATCH_SIZE) {
+          // Split into chunks and process sequentially
+          const chunks: string[][] = []
+          for (let i = 0; i < textsToAnalyze.length; i += MAX_BATCH_SIZE) {
+            chunks.push(textsToAnalyze.slice(i, i + MAX_BATCH_SIZE))
+          }
+          
+          setError(`Processing ${textsToAnalyze.length} paragraphs in ${chunks.length} batches...`)
+          
+          const allResults: BatchAnalysisResult[] = []
+          
+          for (let i = 0; i < chunks.length; i++) {
+            setError(`Processing batch ${i + 1} of ${chunks.length}...`)
+            
+            const chunkResult = await analyzeBatchTexts(chunks[i], {
+              include_entities: true,
+              include_keywords: true,
+              include_sentiment: true,
+              include_statistics: true,
+              include_summary: true,
+              top_keywords: 10
+            })
+            
+            allResults.push(chunkResult)
+          }
+          
+          // Merge all results
+          const mergedResult = mergeChunkResults(allResults)
+          setBatchResult(mergedResult)
+          setError('') // Clear the progress message
+          
+        } else {
+          // Normal batch processing (under 100 items)
+          const result = await analyzeBatchTexts(textsToAnalyze, {
+            include_entities: true,
+            include_keywords: true,
+            include_sentiment: true,
+            include_statistics: true,
+            include_summary: true,
+            top_keywords: 10
+          })
 
-        setBatchResult(result)
+          setBatchResult(result)
+        }
       } else {
         // Single text analysis mode
         const textToAnalyze = useCustomText ? customText : 
@@ -96,7 +239,18 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
         setAnalysisResult(result)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Analysis failed')
+      // Robust error message extraction
+      let errorMessage = 'Analysis failed'
+      if (err instanceof Error) {
+        errorMessage = err.message
+      } else if (typeof err === 'string') {
+        errorMessage = err
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        errorMessage = String((err as { message: unknown }).message)
+      } else if (err && typeof err === 'object') {
+        errorMessage = JSON.stringify(err)
+      }
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -564,9 +718,103 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
               {/* Keywords Tab */}
               {activeTab === 'keywords' && analysisResult.keywords && (
                 <div>
-                  <h3 style={{ marginTop: 0 }}>Top Keywords ({analysisResult.keywords.length})</h3>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    marginBottom: '16px'
+                  }}>
+                    <h3 style={{ margin: 0 }}>Top Keywords ({analysisResult.keywords.length})</h3>
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '8px',
+                      background: '#f3f4f6',
+                      padding: '4px',
+                      borderRadius: '8px'
+                    }}>
+                      <button
+                        onClick={() => setKeywordViewMode('list')}
+                        style={{
+                          background: keywordViewMode === 'list' ? '#8b5cf6' : 'transparent',
+                          color: keywordViewMode === 'list' ? 'white' : '#6b7280',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <List size={16} />
+                        List
+                      </button>
+                      <button
+                        onClick={() => setKeywordViewMode('cloud')}
+                        style={{
+                          background: keywordViewMode === 'cloud' ? '#8b5cf6' : 'transparent',
+                          color: keywordViewMode === 'cloud' ? 'white' : '#6b7280',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <Cloud size={16} />
+                        Cloud
+                      </button>
+                    </div>
+                  </div>
+                  
                   {analysisResult.keywords.length === 0 ? (
                     <p style={{ color: '#6b7280' }}>No keywords extracted.</p>
+                  ) : keywordViewMode === 'cloud' ? (
+                    <div style={{
+                      background: '#f9fafb',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      padding: '20px',
+                      minHeight: '400px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <ReactWordcloud
+                        words={analysisResult.keywords.map(kw => ({
+                          text: kw.keyword,
+                          value: Math.max(kw.score * 100, 10) // Scale up and ensure minimum size
+                        }))}
+                        options={{
+                          rotations: 2,
+                          rotationAngles: [0, 90],
+                          fontSizes: [16, 72],
+                          fontFamily: 'system-ui, -apple-system, sans-serif',
+                          fontWeight: '600',
+                          padding: 4,
+                          scale: 'sqrt',
+                          spiral: 'archimedean',
+                          transitionDuration: 1000,
+                          colors: [
+                            '#8b5cf6', '#6366f1', '#3b82f6', 
+                            '#0ea5e9', '#06b6d4', '#14b8a6',
+                            '#10b981', '#84cc16', '#eab308',
+                            '#f97316', '#ef4444', '#ec4899'
+                          ],
+                          enableTooltip: true,
+                          deterministic: true,
+                          enableOptimizations: true
+                        }}
+                      />
+                    </div>
                   ) : (
                     <div>
                       {analysisResult.keywords.map((keyword, idx) => (
@@ -851,18 +1099,111 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
 
               {/* Aggregated Keywords */}
               <div style={{ marginBottom: '32px' }}>
-                <h3 style={{ 
-                  marginTop: 0,
-                  marginBottom: '16px',
-                  display: 'flex',
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
                   alignItems: 'center',
-                  gap: '8px'
+                  marginBottom: '16px'
                 }}>
-                  <TrendingUp size={20} color="#8b5cf6" />
-                  Top Keywords Across All Texts ({batchResult.aggregated_keywords?.length || 0})
-                </h3>
+                  <h3 style={{ 
+                    margin: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <TrendingUp size={20} color="#8b5cf6" />
+                    Top Keywords Across All Texts ({batchResult.aggregated_keywords?.length || 0})
+                  </h3>
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '8px',
+                    background: '#f3f4f6',
+                    padding: '4px',
+                    borderRadius: '8px'
+                  }}>
+                    <button
+                      onClick={() => setKeywordViewMode('list')}
+                      style={{
+                        background: keywordViewMode === 'list' ? '#8b5cf6' : 'transparent',
+                        color: keywordViewMode === 'list' ? 'white' : '#6b7280',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <List size={16} />
+                      List
+                    </button>
+                    <button
+                      onClick={() => setKeywordViewMode('cloud')}
+                      style={{
+                        background: keywordViewMode === 'cloud' ? '#8b5cf6' : 'transparent',
+                        color: keywordViewMode === 'cloud' ? 'white' : '#6b7280',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <Cloud size={16} />
+                      Cloud
+                    </button>
+                  </div>
+                </div>
+                
                 {!batchResult.aggregated_keywords || batchResult.aggregated_keywords.length === 0 ? (
                   <p style={{ color: '#6b7280' }}>No keywords extracted.</p>
+                ) : keywordViewMode === 'cloud' ? (
+                  <div style={{
+                    background: '#f9fafb',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '20px',
+                    minHeight: '400px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <ReactWordcloud
+                      words={batchResult.aggregated_keywords.map(kw => ({
+                        text: kw.keyword,
+                        value: Math.max(kw.score * 100, 10)
+                      }))}
+                      options={{
+                        rotations: 2,
+                        rotationAngles: [0, 90],
+                        fontSizes: [16, 72],
+                        fontFamily: 'system-ui, -apple-system, sans-serif',
+                        fontWeight: '600',
+                        padding: 4,
+                        scale: 'sqrt',
+                        spiral: 'archimedean',
+                        transitionDuration: 1000,
+                        colors: [
+                          '#8b5cf6', '#6366f1', '#3b82f6', 
+                          '#0ea5e9', '#06b6d4', '#14b8a6',
+                          '#10b981', '#84cc16', '#eab308',
+                          '#f97316', '#ef4444', '#ec4899'
+                        ],
+                        enableTooltip: true,
+                        deterministic: true,
+                        enableOptimizations: true
+                      }}
+                    />
+                  </div>
                 ) : (
                   <div style={{ 
                     display: 'grid',
