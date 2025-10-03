@@ -6,6 +6,7 @@ import csv
 import io
 import os
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 
 router = APIRouter()
 
@@ -22,10 +23,42 @@ class ExportRequest(BaseModel):
     include_annotations: bool = True
 
 def get_parsed_data(file_id: str) -> List[Dict[str, Any]]:
-    """Retrieve parsed data for a file (would normally call parse endpoint)"""
-    # In a real implementation, you might cache parsed data
-    # For now, this is a placeholder - the frontend should call parse first
+    """Retrieve parsed data for a file from cache"""
+    storage_dir = get_storage_dir()
+    
+    # Try to load from cache first
+    cache_dir = f"{storage_dir}/cache"
+    os.makedirs(cache_dir, exist_ok=True)
+    cache_file = os.path.join(cache_dir, f"{file_id}_parsed.json")
+    
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                cached_data = json.load(f)
+                return cached_data.get('paragraphs', [])
+        except Exception as e:
+            print(f"Error loading cached data: {e}")
+    
+    # If no cache exists, return empty list
+    # Frontend should parse the file first before exporting
     return []
+
+def save_parsed_data_cache(file_id: str, paragraphs: List[Dict[str, Any]]):
+    """Save parsed data to cache for later export"""
+    storage_dir = get_storage_dir()
+    cache_dir = f"{storage_dir}/cache"
+    os.makedirs(cache_dir, exist_ok=True)
+    cache_file = os.path.join(cache_dir, f"{file_id}_parsed.json")
+    
+    try:
+        with open(cache_file, 'w', encoding='utf-8') as f:
+            json.dump({
+                'file_id': file_id,
+                'paragraphs': paragraphs,
+                'cached_at': json.dumps(datetime.now().isoformat())
+            }, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Error saving cache: {e}")
 
 def get_annotations_data(file_id: str) -> Dict[str, Dict[str, Any]]:
     """Retrieve annotations for a file"""

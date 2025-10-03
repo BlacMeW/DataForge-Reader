@@ -208,3 +208,76 @@ async def get_export_sample(template_id: str):
         "sample_data": sample,
         "format": template.export_format
     }
+
+@router.post("/templates/validate")
+async def validate_template(template: Dict[str, Any]):
+    """Validate a template structure"""
+    errors = []
+    warnings = []
+    
+    # Check required fields
+    required_keys = ['id', 'name', 'fields']
+    for key in required_keys:
+        if key not in template:
+            errors.append(f"Missing required field: '{key}'")
+    
+    # Validate fields array
+    if 'fields' in template:
+        if not isinstance(template['fields'], list):
+            errors.append("'fields' must be a list")
+        elif len(template['fields']) == 0:
+            warnings.append("Template has no fields defined")
+        else:
+            field_names = set()
+            for i, field in enumerate(template['fields']):
+                # Check field structure
+                if not isinstance(field, dict):
+                    errors.append(f"Field {i} must be an object")
+                    continue
+                
+                # Check field name
+                if 'name' not in field:
+                    errors.append(f"Field {i} missing 'name'")
+                elif field['name'] in field_names:
+                    errors.append(f"Duplicate field name: '{field['name']}'")
+                else:
+                    field_names.add(field['name'])
+                
+                # Check field type
+                if 'type' not in field:
+                    errors.append(f"Field '{field.get('name', i)}' missing 'type'")
+                else:
+                    valid_types = ['string', 'integer', 'float', 'boolean', 'categorical', 'list', 'object']
+                    if field['type'] not in valid_types:
+                        warnings.append(f"Field '{field.get('name')}' has non-standard type: '{field['type']}'")
+                
+                # Validate categorical options
+                if field.get('type') == 'categorical' and 'options' not in field:
+                    warnings.append(f"Categorical field '{field.get('name')}' should have 'options'")
+    
+    # Validate annotation schema
+    if 'annotation_schema' in template:
+        schema = template['annotation_schema']
+        if not isinstance(schema, dict):
+            errors.append("'annotation_schema' must be an object")
+        else:
+            if 'type' not in schema:
+                warnings.append("Annotation schema missing 'type'")
+            if 'instructions' not in schema:
+                warnings.append("Annotation schema missing 'instructions' for users")
+    else:
+        warnings.append("Template missing 'annotation_schema'")
+    
+    # Check task type
+    if 'task_type' in template:
+        valid_task_types = ['classification', 'ner', 'qa', 'summarization', 'sentiment', 'custom']
+        if template['task_type'] not in valid_task_types:
+            warnings.append(f"Unusual task_type: '{template['task_type']}'")
+    
+    return {
+        "valid": len(errors) == 0,
+        "errors": errors,
+        "warnings": warnings,
+        "message": "Template is valid" if len(errors) == 0 else f"Found {len(errors)} error(s)",
+        "template_id": template.get('id', 'unknown')
+    }

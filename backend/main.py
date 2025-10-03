@@ -59,13 +59,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
     # Try relative imports first
-    from .routers import upload, parse, annotate, export, templates
+    from .routers import upload, parse, annotate, export, templates, data_mining
     print("Successfully imported routers with relative imports")
 except ImportError as e:
     print(f"Relative import failed: {e}")
     try:
         # Fallback to absolute imports for AppImage environment
-        from routers import upload, parse, annotate, export, templates
+        from routers import upload, parse, annotate, export, templates, data_mining
         print("Successfully imported routers with absolute imports")
     except ImportError as e2:
         print(f"Absolute import also failed: {e2}")
@@ -76,6 +76,7 @@ except ImportError as e:
             import routers.annotate as annotate
             import routers.export as export
             import routers.templates as templates
+            import routers.data_mining as data_mining
             print("Successfully imported individual router modules")
         except ImportError as e3:
             print(f"All import methods failed: {e3}")
@@ -90,7 +91,7 @@ except ImportError as e:
                 return {"templates": [], "error": "Templates router not available"}
             
             print("Added fallback endpoints")
-            upload = parse = annotate = export = templates = None
+            upload = parse = annotate = export = templates = data_mining = None
 
 # Include routers if successfully imported
 try:
@@ -115,6 +116,10 @@ try:
         print("Added templates router - this should fix the AppImage issue!")
     else:
         print("WARNING: Templates router not loaded - this is the AppImage issue!")
+    
+    if 'data_mining' in locals() and data_mining and hasattr(data_mining, 'router'):
+        app.include_router(data_mining.router, prefix="/api", tags=["data-mining"])
+        print("Added data mining router")
 except Exception as e:
     print(f"Error adding routers: {e}")
 

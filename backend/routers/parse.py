@@ -61,14 +61,32 @@ def extract_paragraphs_from_text(text: str, page_num: int) -> List[Dict[str, Any
     for i, paragraph in enumerate(paragraphs):
         cleaned = clean_text(paragraph)
         if len(cleaned) > 10:  # Filter out very short paragraphs
+            # Calculate rich metadata
+            words = cleaned.split()
+            word_count = len(words)
+            
             result.append({
                 "id": f"p_{page_num}_{i}",
                 "page": page_num,
                 "paragraph_index": i,
                 "text": cleaned,
-                "word_count": len(cleaned.split()),
+                "word_count": word_count,
                 "char_count": len(cleaned),
-                "annotations": {}  # Placeholder for future annotations
+                "annotations": {},  # Placeholder for future annotations
+                
+                # Enhanced metadata for better data mining
+                "sentence_count": len(re.findall(r'[.!?]+', cleaned)),
+                "avg_word_length": round(sum(len(w) for w in words) / max(word_count, 1), 2),
+                "has_numbers": bool(re.search(r'\d', cleaned)),
+                "has_special_chars": bool(re.search(r'[^\w\s.,!?-]', cleaned)),
+                "starts_with_capital": cleaned[0].isupper() if cleaned else False,
+                "ends_with_punctuation": cleaned[-1] in '.!?' if cleaned else False,
+                "is_question": cleaned.strip().endswith('?') if cleaned else False,
+                
+                # Content type hints for smart processing
+                "likely_heading": len(cleaned) < 100 and not cleaned.endswith('.'),
+                "likely_list_item": cleaned.startswith(('- ', '* ', '• ')) or bool(re.match(r'^\d+[\.\)]', cleaned.strip())),
+                "likely_quote": cleaned.startswith(('"', '"', '«')) or cleaned.count('"') >= 2,
             })
     
     return result
@@ -242,6 +260,9 @@ async def parse_file(request: ParseRequest):
         
         processing_time = time.time() - start_time
         
+        # Cache the parsed results for export functionality
+        save_to_cache(request.file_id, paragraphs, total_pages, extraction_method, processing_time)
+        
         return ParseResponse(
             file_id=request.file_id,
             filename=original_filename or "unknown",
@@ -255,6 +276,30 @@ async def parse_file(request: ParseRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Parsing failed: {str(e)}")
+
+def save_to_cache(file_id: str, paragraphs: List[Dict[str, Any]], 
+                  total_pages: int, extraction_method: str, processing_time: float):
+    """Save parsed data to cache"""
+    upload_dir = get_upload_dir()
+    storage_dir = os.path.dirname(upload_dir)
+    cache_dir = os.path.join(storage_dir, "cache")
+    os.makedirs(cache_dir, exist_ok=True)
+    
+    cache_file = os.path.join(cache_dir, f"{file_id}_parsed.json")
+    
+    try:
+        with open(cache_file, 'w', encoding='utf-8') as f:
+            json.dump({
+                'file_id': file_id,
+                'paragraphs': paragraphs,
+                'total_pages': total_pages,
+                'extraction_method': extraction_method,
+                'processing_time': processing_time,
+                'cached_at': time.time()
+            }, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Warning: Could not cache parsed data: {e}")
+
 
 @router.get("/parse/{file_id}")
 async def get_parsed_content(file_id: str):
