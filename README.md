@@ -47,12 +47,36 @@ npm install
 
 ## 🎯 Quick Start
 
-### Option 1: Use the start script
+### Option 1: Use the Backend Server Manager (Recommended)
+The server manager provides systemd-like control over the backend server with automatic port management.
+
+```bash
+# Start backend server
+./server start --force
+
+# In another terminal, start frontend
+cd frontend
+npm run dev
+```
+
+**Server Manager Commands:**
+```bash
+./server start          # Start backend server
+./server stop           # Stop backend server
+./server restart        # Restart backend server
+./server status         # Check server status
+./server logs           # View recent logs
+./server logs --follow  # Follow logs in real-time
+```
+
+See [SERVER_MANAGER.md](SERVER_MANAGER.md) for complete documentation or [SERVER_QUICK_REF.md](SERVER_QUICK_REF.md) for quick reference.
+
+### Option 2: Use the start script
 ```bash
 ./start_app.sh
 ```
 
-### Option 2: Start manually
+### Option 3: Start manually
 ```bash
 # Terminal 1 - Backend
 cd backend
