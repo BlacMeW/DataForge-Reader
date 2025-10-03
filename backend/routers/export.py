@@ -7,8 +7,17 @@ import io
 import os
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import asyncio
 
 router = APIRouter()
+
+# Import the text analyzer for NLP analysis
+try:
+    from ..utils.text_analytics import TextAnalyzer
+    NLP_AVAILABLE = True
+except ImportError:
+    NLP_AVAILABLE = False
+    TextAnalyzer = None
 
 # Get directories from environment variables or use defaults
 def get_storage_dir():
@@ -21,6 +30,7 @@ class ExportRequest(BaseModel):
     file_id: str
     format: str  # "csv" or "jsonl"
     include_annotations: bool = True
+    include_nlp: bool = False  # New: Include NLP analysis in export
 
 def get_parsed_data(file_id: str) -> List[Dict[str, Any]]:
     """Retrieve parsed data for a file from cache"""
@@ -74,7 +84,7 @@ def get_annotations_data(file_id: str) -> Dict[str, Dict[str, Any]]:
 
 @router.post("/export")
 async def export_data(request: ExportRequest):
-    """Export annotated data as CSV or JSONL"""
+    """Export annotated data as CSV or JSONL with optional NLP analysis"""
     if request.format not in ["csv", "jsonl"]:
         raise HTTPException(status_code=400, detail="Format must be 'csv' or 'jsonl'")
     
@@ -87,8 +97,16 @@ async def export_data(request: ExportRequest):
         if request.include_annotations:
             annotations = get_annotations_data(request.file_id)
         
+        # Initialize NLP analyzer if needed
+        analyzer = None
+        if request.include_nlp and NLP_AVAILABLE and TextAnalyzer:
+            try:
+                analyzer = TextAnalyzer()
+            except Exception as e:
+                print(f"Warning: Could not initialize NLP analyzer: {e}")
+        
         # Combine data
-        export_data = []
+        export_data_list = []
         for paragraph in parsed_data:
             item = {
                 "file_id": request.file_id,
@@ -110,7 +128,43 @@ async def export_data(request: ExportRequest):
                     "annotations": json.dumps(annotation) if annotation else None
                 })
             
-            export_data.append(item)
+            # Add NLP analysis if requested
+            text = paragraph.get("text")
+            if request.include_nlp and analyzer and text and isinstance(text, str):
+                try:
+                    # Perform NLP analysis
+                    entities = analyzer.extract_entities(text)
+                    keywords = analyzer.extract_keywords(text, top_n=10)
+                    sentiment = analyzer.analyze_sentiment(text)
+                    
+                    # Add NLP fields
+                    item.update({
+                        "nlp_entities": json.dumps([{
+                            "text": e["text"],
+                            "label": e["label"]
+                        } for e in entities]) if entities else None,
+                        "nlp_entities_count": len(entities) if entities else 0,
+                        "nlp_keywords": json.dumps([{
+                            "keyword": k["keyword"],
+                            "score": k["score"]
+                        } for k in keywords]) if keywords else None,
+                        "nlp_sentiment": sentiment.get("sentiment") if sentiment else None,
+                        "nlp_sentiment_score": sentiment.get("score") if sentiment else None,
+                        "nlp_sentiment_confidence": sentiment.get("confidence") if sentiment else None,
+                    })
+                except Exception as e:
+                    print(f"Warning: NLP analysis failed for paragraph {paragraph_id}: {e}")
+                    # Add empty NLP fields
+                    item.update({
+                        "nlp_entities": None,
+                        "nlp_entities_count": 0,
+                        "nlp_keywords": None,
+                        "nlp_sentiment": None,
+                        "nlp_sentiment_score": None,
+                        "nlp_sentiment_confidence": None,
+                    })
+            
+            export_data_list.append(item)
         
         # Generate export file
         export_dir = get_exports_dir()
@@ -120,9 +174,9 @@ async def export_data(request: ExportRequest):
         file_path = os.path.join(export_dir, filename)
         
         if request.format == "csv":
-            content = export_to_csv(export_data)
+            content = export_to_csv(export_data_list)
         else:  # jsonl
-            content = export_to_jsonl(export_data)
+            content = export_to_jsonl(export_data_list)
         
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
@@ -132,9 +186,10 @@ async def export_data(request: ExportRequest):
             "file_id": request.file_id,
             "format": request.format,
             "filename": filename,
-            "record_count": len(export_data),
+            "record_count": len(export_data_list),
             "include_annotations": request.include_annotations,
-            "download_url": f"/api/export/{request.file_id}?format={request.format}&include_annotations={request.include_annotations}"
+            "include_nlp": request.include_nlp,
+            "download_url": f"/api/export/{request.file_id}?format={request.format}&include_annotations={request.include_annotations}&include_nlp={request.include_nlp}"
         }
         
     except Exception as e:
@@ -144,7 +199,8 @@ async def export_data(request: ExportRequest):
 async def download_export(
     file_id: str,
     format: str = Query(..., regex="^(csv|jsonl)$"),
-    include_annotations: bool = Query(True)
+    include_annotations: bool = Query(True),
+    include_nlp: bool = Query(False)
 ):
     """Download exported data file"""
     try:
@@ -157,7 +213,8 @@ async def download_export(
             request = ExportRequest(
                 file_id=file_id,
                 format=format,
-                include_annotations=include_annotations
+                include_annotations=include_annotations,
+                include_nlp=include_nlp
             )
             await export_data(request)
         

@@ -1,9 +1,17 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import axios from 'axios'
-import { BookOpen, Loader, AlertCircle, Search, Filter, X, BarChart } from 'lucide-react'
+import { BookOpen, Loader, AlertCircle, Search, Filter, X, BarChart, Sparkles, Tag, Heart } from 'lucide-react'
 import type { UploadedFile, ParsedParagraph } from '../App'
 import ExportButtons from './ExportButtons'
 import DataAnalytics from './DataAnalytics'
+import {
+  analyzeSingleText,
+  getEntityColor,
+  getSentimentColor,
+  getSentimentIcon,
+  highlightEntities,
+  type AnalysisResult
+} from '../services/dataMiningApi'
 
 interface ParseViewerProps {
   file: UploadedFile
@@ -29,7 +37,12 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose, onParagraphsLo
   const [processingProgress, setProcessingProgress] = useState<number>(0)
   
   // View state
-  const [currentView, setCurrentView] = useState<'content' | 'analytics'>('content')
+  const [currentView, setCurrentView] = useState<'content' | 'analytics' | 'nlp'>('content')
+  
+  // NLP Analysis state
+  const [nlpAnalysis, setNlpAnalysis] = useState<Map<string, AnalysisResult>>(new Map())
+  const [analyzingParagraph, setAnalyzingParagraph] = useState<string | null>(null)
+  const [nlpError, setNlpError] = useState<string>('')
 
   // Filter states
   const [searchText, setSearchText] = useState<string>('')
@@ -183,6 +196,32 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose, onParagraphsLo
     setWholeWords(false)
     setRegexError('')
   }
+  
+  // NLP Analysis function
+  const analyzeParagraph = async (paragraphId: string) => {
+    const paragraph = paragraphs.find(p => p.id === paragraphId)
+    if (!paragraph || analyzingParagraph) return
+    
+    setAnalyzingParagraph(paragraphId)
+    setNlpError('')
+    
+    try {
+      const result = await analyzeSingleText(paragraph.text, {
+        include_entities: true,
+        include_keywords: true,
+        include_sentiment: true,
+        include_statistics: true,
+        include_summary: true,
+        top_keywords: 10
+      })
+      
+      setNlpAnalysis(prev => new Map(prev).set(paragraphId, result))
+    } catch (err) {
+      setNlpError(err instanceof Error ? err.message : 'Analysis failed')
+    } finally {
+      setAnalyzingParagraph(null)
+    }
+  }
 
   // Get unique page numbers for filter dropdown
   const availablePages = useMemo(() => {
@@ -299,8 +338,28 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose, onParagraphsLo
         {paragraphs.length > 0 && (
           <>
             <div style={{ borderLeft: '1px solid #ccc', height: '30px', margin: '0 10px' }}></div>
+            
+            {/* View Switcher Buttons */}
             <button 
-              onClick={() => setCurrentView(currentView === 'content' ? 'analytics' : 'content')}
+              onClick={() => setCurrentView('content')}
+              style={{
+                backgroundColor: currentView === 'content' ? '#3b82f6' : '#6b7280',
+                color: 'white',
+                padding: '8px 16px',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <BookOpen size={16} />
+              Content
+            </button>
+            
+            <button 
+              onClick={() => setCurrentView('analytics')}
               style={{
                 backgroundColor: currentView === 'analytics' ? '#10b981' : '#6b7280',
                 color: 'white',
@@ -314,8 +373,27 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose, onParagraphsLo
               }}
             >
               <BarChart size={16} />
-              {currentView === 'analytics' ? 'Show Content' : 'Show Analytics'}
+              Analytics
             </button>
+            
+            <button 
+              onClick={() => setCurrentView('nlp')}
+              style={{
+                backgroundColor: currentView === 'nlp' ? '#8b5cf6' : '#6b7280',
+                color: 'white',
+                padding: '8px 16px',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Sparkles size={16} />
+              NLP Analysis
+            </button>
+            
             {currentView === 'content' && (
               <button 
                 onClick={() => setShowFilters(!showFilters)}
@@ -725,6 +803,290 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose, onParagraphsLo
           filename={file.filename}
           processingInfo={processingInfo || undefined}
         />
+      ) : currentView === 'nlp' ? (
+        <div className="nlp-analysis-view">
+          <h3 style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '10px',
+            marginBottom: '20px'
+          }}>
+            <Sparkles size={24} color="#8b5cf6" />
+            NLP Analysis
+          </h3>
+          
+          {nlpError && (
+            <div style={{
+              background: '#fee2e2',
+              border: '1px solid #fca5a5',
+              borderRadius: '6px',
+              padding: '12px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <AlertCircle size={20} color="#dc2626" />
+              <span style={{ color: '#dc2626' }}>{nlpError}</span>
+            </div>
+          )}
+          
+          <div style={{ marginBottom: '30px' }}>
+            <div style={{
+              background: '#f0f9ff',
+              border: '1px solid #bae6fd',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '20px'
+            }}>
+              <p style={{ margin: 0, color: '#0c4a6e' }}>
+                <strong>📊 Analyze your paragraphs with NLP:</strong> Click the "Analyze" button next to any paragraph to see entities, keywords, sentiment, and statistics.
+              </p>
+            </div>
+          </div>
+          
+          <div>
+            {filteredParagraphs.map((paragraph) => {
+              const analysis = nlpAnalysis.get(paragraph.id)
+              const isAnalyzing = analyzingParagraph === paragraph.id
+              
+              return (
+                <div
+                  key={paragraph.id}
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    marginBottom: '16px',
+                    background: analysis ? '#faf5ff' : 'white'
+                  }}
+                >
+                  {/* Paragraph Header */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'flex-start',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        fontSize: '12px', 
+                        color: '#6b7280', 
+                        marginBottom: '8px',
+                        display: 'flex',
+                        gap: '12px',
+                        alignItems: 'center'
+                      }}>
+                        <span>Page {paragraph.page}</span>
+                        <span>•</span>
+                        <span>Paragraph {paragraph.paragraph_index + 1}</span>
+                        <span>•</span>
+                        <span>{paragraph.word_count} words</span>
+                        {analysis && (
+                          <>
+                            <span>•</span>
+                            <span style={{ 
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              gap: '6px',
+                              background: '#ede9fe',
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              color: '#8b5cf6'
+                            }}>
+                              <Sparkles size={12} />
+                              Analyzed
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <div style={{ 
+                        fontSize: '14px', 
+                        lineHeight: '1.6',
+                        color: '#374151'
+                      }}>
+                        {analysis && analysis.entities && analysis.entities.length > 0 ? (
+                          <div
+                            dangerouslySetInnerHTML={{
+                              __html: highlightEntities(paragraph.text, analysis.entities)
+                            }}
+                          />
+                        ) : (
+                          paragraph.text
+                        )}
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => analyzeParagraph(paragraph.id)}
+                      disabled={isAnalyzing}
+                      style={{
+                        marginLeft: '16px',
+                        background: analysis ? '#10b981' : '#8b5cf6',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        opacity: isAnalyzing ? 0.7 : 1,
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <Loader size={14} className="spinner" />
+                          Analyzing...
+                        </>
+                      ) : analysis ? (
+                        <>
+                          <Sparkles size={14} />
+                          Re-analyze
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={14} />
+                          Analyze
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  
+                  {/* Analysis Results */}
+                  {analysis && (
+                    <div style={{
+                      marginTop: '16px',
+                      paddingTop: '16px',
+                      borderTop: '2px solid #e9d5ff'
+                    }}>
+                      {/* Entities */}
+                      {analysis.entities && analysis.entities.length > 0 && (
+                        <div style={{ marginBottom: '16px' }}>
+                          <h4 style={{ 
+                            margin: '0 0 10px',
+                            fontSize: '14px',
+                            color: '#6b7280',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}>
+                            <Tag size={14} />
+                            Entities ({analysis.entities.length})
+                          </h4>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {analysis.entities.map((entity, idx) => (
+                              <span
+                                key={idx}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '4px 8px',
+                                  borderRadius: '12px',
+                                  fontSize: '12px',
+                                  background: `${getEntityColor(entity.label)}20`,
+                                  border: `1px solid ${getEntityColor(entity.label)}40`,
+                                  color: getEntityColor(entity.label)
+                                }}
+                              >
+                                <strong>{entity.text}</strong>
+                                <span style={{
+                                  fontSize: '10px',
+                                  background: getEntityColor(entity.label),
+                                  color: 'white',
+                                  padding: '1px 4px',
+                                  borderRadius: '6px'
+                                }}>
+                                  {entity.label}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Keywords */}
+                      {analysis.keywords && analysis.keywords.length > 0 && (
+                        <div style={{ marginBottom: '16px' }}>
+                          <h4 style={{ 
+                            margin: '0 0 10px',
+                            fontSize: '14px',
+                            color: '#6b7280'
+                          }}>
+                            Top Keywords ({analysis.keywords.length})
+                          </h4>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {analysis.keywords.slice(0, 5).map((keyword, idx) => (
+                              <span
+                                key={idx}
+                                style={{
+                                  padding: '4px 10px',
+                                  borderRadius: '12px',
+                                  fontSize: '12px',
+                                  background: '#e0e7ff',
+                                  color: '#4f46e5',
+                                  fontWeight: '500'
+                                }}
+                              >
+                                {keyword.keyword}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Sentiment */}
+                      {analysis.sentiment && (
+                        <div style={{ marginBottom: '0' }}>
+                          <h4 style={{ 
+                            margin: '0 0 10px',
+                            fontSize: '14px',
+                            color: '#6b7280',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}>
+                            <Heart size={14} />
+                            Sentiment
+                          </h4>
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            background: `${getSentimentColor(analysis.sentiment.sentiment)}15`,
+                            border: `1px solid ${getSentimentColor(analysis.sentiment.sentiment)}40`
+                          }}>
+                            <span style={{ fontSize: '18px' }}>
+                              {getSentimentIcon(analysis.sentiment.sentiment)}
+                            </span>
+                            <span style={{
+                              fontWeight: '600',
+                              color: getSentimentColor(analysis.sentiment.sentiment),
+                              textTransform: 'capitalize'
+                            }}>
+                              {analysis.sentiment.sentiment}
+                            </span>
+                            <span style={{ fontSize: '11px', color: '#6b7280' }}>
+                              ({(analysis.sentiment.confidence * 100).toFixed(0)}%)
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
       ) : (
         <div className="parse-viewer">
           <h3>
@@ -803,6 +1165,30 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose, onParagraphsLo
           )}
         </div>
       )}
+
+      <style>{`
+        .spinner {
+          animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .entity {
+          cursor: help;
+          transition: all 0.2s ease;
+          display: inline;
+          position: relative;
+        }
+
+        .entity:hover {
+          filter: brightness(0.9);
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+      `}</style>
     </div>
   )
 }

@@ -1,133 +1,105 @@
 import React, { useState } from 'react'
-import axios from 'axios'
-import { Sparkles, Tag, Heart, TrendingUp, Loader, AlertCircle, X } from 'lucide-react'
+import { Sparkles, Tag, Heart, TrendingUp, Loader, AlertCircle, X, CheckSquare, Square } from 'lucide-react'
 import type { ParsedParagraph } from '../App'
+import {
+  analyzeSingleText,
+  analyzeBatchTexts,
+  getEntityColor,
+  getSentimentColor,
+  getSentimentIcon,
+  highlightEntities,
+  type AnalysisResult,
+  type BatchAnalysisResult
+} from '../services/dataMiningApi'
 
 interface DataMiningProps {
   paragraphs: ParsedParagraph[]
   onClose: () => void
 }
 
-interface Entity {
-  text: string
-  label: string
-  start: number
-  end: number
-  confidence: number
-}
-
-interface Keyword {
-  keyword: string
-  score: number
-  type: string
-}
-
-interface Sentiment {
-  sentiment: 'positive' | 'negative' | 'neutral'
-  score: number
-  confidence: number
-  positive_indicators: number
-  negative_indicators: number
-}
-
-interface Statistics {
-  numbers: number[]
-  percentages: string[]
-  currencies: string[]
-  measurements: string[]
-}
-
-interface Summary {
-  word_count: number
-  char_count: number
-  sentence_count: number
-  avg_word_length: number
-  avg_sentence_length: number
-  unique_words: number
-  lexical_diversity: number
-}
-
-interface AnalysisResult {
-  text_length: number
-  entities?: Entity[]
-  keywords?: Keyword[]
-  sentiment?: Sentiment
-  statistics?: Statistics
-  summary?: Summary
-  language: string
-}
-
-const API_BASE_URL = 'http://localhost:8000/api'
-
 const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
   const [selectedParagraph, setSelectedParagraph] = useState<string>('')
+  const [selectedParagraphs, setSelectedParagraphs] = useState<string[]>([])
   const [customText, setCustomText] = useState<string>('')
   const [useCustomText, setUseCustomText] = useState<boolean>(false)
+  const [useBatchMode, setUseBatchMode] = useState<boolean>(false)
+  const [showHighlighting, setShowHighlighting] = useState<boolean>(true)
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  const [batchResult, setBatchResult] = useState<BatchAnalysisResult | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string>('')
   const [activeTab, setActiveTab] = useState<'entities' | 'keywords' | 'sentiment' | 'stats'>('entities')
 
+  const toggleParagraphSelection = (id: string) => {
+    setSelectedParagraphs(prev =>
+      prev.includes(id)
+        ? prev.filter(p => p !== id)
+        : [...prev, id]
+    )
+  }
+
+  const selectAllParagraphs = () => {
+    setSelectedParagraphs(paragraphs.map(p => p.id))
+  }
+
+  const deselectAllParagraphs = () => {
+    setSelectedParagraphs([])
+  }
+
   const handleAnalyze = async () => {
-    const textToAnalyze = useCustomText ? customText : 
-      paragraphs.find(p => p.id === selectedParagraph)?.text || ''
-
-    if (!textToAnalyze.trim()) {
-      setError('Please enter or select text to analyze')
-      return
-    }
-
     setLoading(true)
     setError('')
+    setAnalysisResult(null)
+    setBatchResult(null)
     
     try {
-      const response = await axios.post(`${API_BASE_URL}/mine/analyze`, {
-        text: textToAnalyze,
-        include_entities: true,
-        include_keywords: true,
-        include_sentiment: true,
-        include_statistics: true,
-        include_summary: true,
-        top_keywords: 10
-      })
-      
-      setAnalysisResult(response.data)
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.detail || 'Analysis failed')
+      if (useBatchMode) {
+        // Batch analysis mode
+        if (selectedParagraphs.length === 0) {
+          setError('Please select at least one paragraph for batch analysis')
+          return
+        }
+
+        const textsToAnalyze = paragraphs
+          .filter(p => selectedParagraphs.includes(p.id))
+          .map(p => p.text)
+
+        const result = await analyzeBatchTexts(textsToAnalyze, {
+          include_entities: true,
+          include_keywords: true,
+          include_sentiment: true,
+          include_statistics: true,
+          include_summary: true,
+          top_keywords: 10
+        })
+
+        setBatchResult(result)
       } else {
-        setError('An unexpected error occurred')
+        // Single text analysis mode
+        const textToAnalyze = useCustomText ? customText : 
+          paragraphs.find(p => p.id === selectedParagraph)?.text || ''
+
+        if (!textToAnalyze.trim()) {
+          setError('Please enter or select text to analyze')
+          return
+        }
+
+        const result = await analyzeSingleText(textToAnalyze, {
+          include_entities: true,
+          include_keywords: true,
+          include_sentiment: true,
+          include_statistics: true,
+          include_summary: true,
+          top_keywords: 10
+        })
+
+        setAnalysisResult(result)
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Analysis failed')
     } finally {
       setLoading(false)
     }
-  }
-
-  const getEntityColor = (label: string): string => {
-    const colors: Record<string, string> = {
-      'PERSON': '#3b82f6',
-      'ORG': '#8b5cf6',
-      'GPE': '#10b981',
-      'DATE': '#f59e0b',
-      'MONEY': '#059669',
-      'PRODUCT': '#ec4899',
-      'TIME': '#06b6d4',
-      'PERCENT': '#ef4444',
-      'CARDINAL': '#6366f1',
-    }
-    return colors[label] || '#6b7280'
-  }
-
-  const getSentimentColor = (sentiment: string): string => {
-    if (sentiment === 'positive') return '#10b981'
-    if (sentiment === 'negative') return '#ef4444'
-    return '#f59e0b'
-  }
-
-  const getSentimentIcon = (sentiment: string): string => {
-    if (sentiment === 'positive') return '✓'
-    if (sentiment === 'negative') return '✗'
-    return '~'
   }
 
   return (
@@ -197,64 +169,208 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
             padding: '20px',
             borderRadius: '8px'
           }}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            {/* Mode Selection */}
+            <div style={{ 
+              marginBottom: '20px', 
+              paddingBottom: '16px', 
+              borderBottom: '2px solid #e5e7eb',
+              display: 'flex',
+              gap: '20px'
+            }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                 <input
                   type="radio"
-                  checked={!useCustomText}
-                  onChange={() => setUseCustomText(false)}
-                />
-                <span>Select from paragraphs</span>
-              </label>
-              {!useCustomText && (
-                <select
-                  value={selectedParagraph}
-                  onChange={(e) => setSelectedParagraph(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    borderRadius: '6px',
-                    border: '1px solid #d1d5db',
-                    fontSize: '14px'
+                  checked={!useBatchMode}
+                  onChange={() => {
+                    setUseBatchMode(false)
+                    setSelectedParagraphs([])
                   }}
-                >
-                  <option value="">-- Select a paragraph --</option>
-                  {paragraphs.map((p, idx) => (
-                    <option key={p.id} value={p.id}>
-                      Paragraph {idx + 1} (Page {p.page}) - {p.text.substring(0, 60)}...
-                    </option>
-                  ))}
-                </select>
-              )}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontWeight: '600', color: !useBatchMode ? '#8b5cf6' : '#6b7280' }}>
+                  Single Analysis
+                </span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  checked={useBatchMode}
+                  onChange={() => {
+                    setUseBatchMode(true)
+                    setUseCustomText(false)
+                  }}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontWeight: '600', color: useBatchMode ? '#8b5cf6' : '#6b7280' }}>
+                  Batch Analysis (Multiple Paragraphs)
+                </span>
+              </label>
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <input
-                  type="radio"
-                  checked={useCustomText}
-                  onChange={() => setUseCustomText(true)}
-                />
-                <span>Enter custom text</span>
-              </label>
-              {useCustomText && (
-                <textarea
-                  value={customText}
-                  onChange={(e) => setCustomText(e.target.value)}
-                  placeholder="Enter text to analyze..."
-                  style={{
-                    width: '100%',
-                    minHeight: '120px',
-                    padding: '10px',
-                    borderRadius: '6px',
-                    border: '1px solid #d1d5db',
-                    fontSize: '14px',
-                    fontFamily: 'inherit',
-                    resize: 'vertical'
-                  }}
-                />
-              )}
-            </div>
+            {/* Single Analysis Mode */}
+            {!useBatchMode && (
+              <>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <input
+                      type="radio"
+                      checked={!useCustomText}
+                      onChange={() => setUseCustomText(false)}
+                    />
+                    <span>Select from paragraphs</span>
+                  </label>
+                  {!useCustomText && (
+                    <select
+                      value={selectedParagraph}
+                      onChange={(e) => setSelectedParagraph(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        borderRadius: '6px',
+                        border: '1px solid #d1d5db',
+                        fontSize: '14px'
+                      }}
+                    >
+                      <option value="">-- Select a paragraph --</option>
+                      {paragraphs.map((p, idx) => (
+                        <option key={p.id} value={p.id}>
+                          Paragraph {idx + 1} (Page {p.page}) - {p.text.substring(0, 60)}...
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <input
+                      type="radio"
+                      checked={useCustomText}
+                      onChange={() => setUseCustomText(true)}
+                    />
+                    <span>Enter custom text</span>
+                  </label>
+                  {useCustomText && (
+                    <textarea
+                      value={customText}
+                      onChange={(e) => setCustomText(e.target.value)}
+                      placeholder="Enter text to analyze..."
+                      style={{
+                        width: '100%',
+                        minHeight: '120px',
+                        padding: '10px',
+                        borderRadius: '6px',
+                        border: '1px solid #d1d5db',
+                        fontSize: '14px',
+                        fontFamily: 'inherit',
+                        resize: 'vertical'
+                      }}
+                    />
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Batch Analysis Mode */}
+            {useBatchMode && (
+              <div>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  marginBottom: '12px'
+                }}>
+                  <span style={{ fontWeight: '600', fontSize: '14px' }}>
+                    Select Paragraphs ({selectedParagraphs.length} selected)
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={selectAllParagraphs}
+                      style={{
+                        background: '#e0e7ff',
+                        border: '1px solid #8b5cf6',
+                        color: '#8b5cf6',
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={deselectAllParagraphs}
+                      style={{
+                        background: 'white',
+                        border: '1px solid #d1d5db',
+                        color: '#6b7280',
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{
+                  maxHeight: '300px',
+                  overflow: 'auto',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  background: 'white',
+                  padding: '8px'
+                }}>
+                  {paragraphs.map((p, idx) => (
+                    <div
+                      key={p.id}
+                      onClick={() => toggleParagraphSelection(p.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '10px',
+                        padding: '10px',
+                        marginBottom: '4px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        background: selectedParagraphs.includes(p.id) ? '#ede9fe' : 'transparent',
+                        border: selectedParagraphs.includes(p.id) ? '1px solid #8b5cf6' : '1px solid transparent',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <div style={{ paddingTop: '2px' }}>
+                        {selectedParagraphs.includes(p.id) ? (
+                          <CheckSquare size={18} color="#8b5cf6" />
+                        ) : (
+                          <Square size={18} color="#9ca3af" />
+                        )}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ 
+                          fontSize: '12px', 
+                          color: '#6b7280', 
+                          marginBottom: '4px',
+                          fontWeight: '600'
+                        }}>
+                          Paragraph {idx + 1} (Page {p.page})
+                        </div>
+                        <div style={{ 
+                          fontSize: '13px', 
+                          color: '#374151',
+                          lineHeight: '1.4'
+                        }}>
+                          {p.text.substring(0, 100)}...
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <button
               onClick={handleAnalyze}
@@ -304,8 +420,67 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
             </div>
           )}
 
-          {/* Results */}
-          {analysisResult && (
+          {/* Analyzed Text Display with Entity Highlighting */}
+          {analysisResult && !batchResult && (
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '12px'
+              }}>
+                <h3 style={{ margin: 0, fontSize: '16px', color: '#374151' }}>
+                  Analyzed Text
+                </h3>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  color: '#6b7280'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={showHighlighting}
+                    onChange={(e) => setShowHighlighting(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <Tag size={16} />
+                  <span>Highlight Entities</span>
+                </label>
+              </div>
+              <div style={{
+                background: '#f9fafb',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                padding: '16px',
+                maxHeight: '300px',
+                overflow: 'auto',
+                fontSize: '14px',
+                lineHeight: '1.6',
+                color: '#1f2937'
+              }}>
+                {showHighlighting && analysisResult.entities && analysisResult.entities.length > 0 ? (
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: highlightEntities(
+                        useCustomText ? customText : paragraphs.find(p => p.id === selectedParagraph)?.text || '',
+                        analysisResult.entities
+                      )
+                    }}
+                  />
+                ) : (
+                  <div style={{ whiteSpace: 'pre-wrap' }}>
+                    {useCustomText ? customText : paragraphs.find(p => p.id === selectedParagraph)?.text || ''}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Single Analysis Results */}
+          {analysisResult && !batchResult && (
             <div>
               {/* Tabs */}
               <div style={{
@@ -592,6 +767,317 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
               )}
             </div>
           )}
+
+          {/* Batch Analysis Results */}
+          {batchResult && (
+            <div>
+              <div style={{
+                background: '#ede9fe',
+                border: '2px solid #8b5cf6',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{ 
+                  margin: '0 0 8px', 
+                  color: '#8b5cf6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <Sparkles size={20} />
+                  Batch Analysis Results
+                </h3>
+                <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
+                  Analyzed {batchResult.total_texts} paragraphs with aggregated results
+                </p>
+              </div>
+
+              {/* Aggregated Entities */}
+              <div style={{ marginBottom: '32px' }}>
+                <h3 style={{ 
+                  marginTop: 0,
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <Tag size={20} color="#8b5cf6" />
+                  Aggregated Entities ({batchResult.aggregated_entities?.length || 0})
+                </h3>
+                {!batchResult.aggregated_entities || batchResult.aggregated_entities.length === 0 ? (
+                  <p style={{ color: '#6b7280' }}>No entities found across the analyzed texts.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {batchResult.aggregated_entities.map((entity, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '10px 14px',
+                          borderRadius: '20px',
+                          background: `${getEntityColor(entity.label)}20`,
+                          border: `2px solid ${getEntityColor(entity.label)}40`
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontWeight: '600',
+                            color: getEntityColor(entity.label),
+                            fontSize: '15px'
+                          }}
+                        >
+                          {entity.text}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            background: getEntityColor(entity.label),
+                            color: 'white',
+                            padding: '3px 8px',
+                            borderRadius: '10px',
+                            fontWeight: '600'
+                          }}
+                        >
+                          {entity.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Aggregated Keywords */}
+              <div style={{ marginBottom: '32px' }}>
+                <h3 style={{ 
+                  marginTop: 0,
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <TrendingUp size={20} color="#8b5cf6" />
+                  Top Keywords Across All Texts ({batchResult.aggregated_keywords?.length || 0})
+                </h3>
+                {!batchResult.aggregated_keywords || batchResult.aggregated_keywords.length === 0 ? (
+                  <p style={{ color: '#6b7280' }}>No keywords extracted.</p>
+                ) : (
+                  <div style={{ 
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+                    gap: '12px'
+                  }}>
+                    {batchResult.aggregated_keywords.map((keyword, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: '12px',
+                          background: '#f9fafb',
+                          borderRadius: '6px',
+                          border: '1px solid #e5e7eb'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                          <span
+                            style={{
+                              width: '22px',
+                              height: '22px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: '#8b5cf6',
+                              color: 'white',
+                              borderRadius: '50%',
+                              fontSize: '11px',
+                              fontWeight: '700'
+                            }}
+                          >
+                            {idx + 1}
+                          </span>
+                          <span style={{ fontWeight: '600', fontSize: '14px', flex: 1 }}>
+                            {keyword.keyword}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '10px',
+                              background: '#e0e7ff',
+                              color: '#6366f1',
+                              padding: '2px 6px',
+                              borderRadius: '8px',
+                              fontWeight: '600'
+                            }}
+                          >
+                            {keyword.type}
+                          </span>
+                        </div>
+                        <div style={{
+                          width: '100%',
+                          height: '6px',
+                          background: '#e5e7eb',
+                          borderRadius: '3px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            width: `${Math.min(keyword.score * 50, 100)}%`,
+                            height: '100%',
+                            background: '#8b5cf6',
+                            borderRadius: '3px'
+                          }} />
+                        </div>
+                        <div style={{ 
+                          marginTop: '4px',
+                          fontSize: '11px',
+                          color: '#6b7280',
+                          textAlign: 'right'
+                        }}>
+                          Score: {keyword.score.toFixed(3)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sentiment Distribution */}
+              {batchResult.aggregated_sentiment && (
+                <div style={{ marginBottom: '32px' }}>
+                  <h3 style={{ 
+                    marginTop: 0,
+                    marginBottom: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <Heart size={20} color="#8b5cf6" />
+                    Sentiment Distribution
+                  </h3>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '16px'
+                  }}>
+                    <div style={{
+                      padding: '20px',
+                      background: '#dcfce7',
+                      borderRadius: '12px',
+                      border: '2px solid #86efac',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '36px', marginBottom: '8px' }}>😊</div>
+                      <div style={{ fontSize: '14px', color: '#166534', marginBottom: '4px', fontWeight: '600' }}>
+                        Positive
+                      </div>
+                      <div style={{ fontSize: '32px', fontWeight: '700', color: '#15803d' }}>
+                        {batchResult.aggregated_sentiment.positive_count}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#166534', marginTop: '4px' }}>
+                        ({((batchResult.aggregated_sentiment.positive_count / batchResult.total_texts) * 100).toFixed(0)}%)
+                      </div>
+                    </div>
+                    <div style={{
+                      padding: '20px',
+                      background: '#f3f4f6',
+                      borderRadius: '12px',
+                      border: '2px solid #d1d5db',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '36px', marginBottom: '8px' }}>😐</div>
+                      <div style={{ fontSize: '14px', color: '#4b5563', marginBottom: '4px', fontWeight: '600' }}>
+                        Neutral
+                      </div>
+                      <div style={{ fontSize: '32px', fontWeight: '700', color: '#6b7280' }}>
+                        {batchResult.aggregated_sentiment.neutral_count}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#4b5563', marginTop: '4px' }}>
+                        ({((batchResult.aggregated_sentiment.neutral_count / batchResult.total_texts) * 100).toFixed(0)}%)
+                      </div>
+                    </div>
+                    <div style={{
+                      padding: '20px',
+                      background: '#fee2e2',
+                      borderRadius: '12px',
+                      border: '2px solid #fca5a5',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '36px', marginBottom: '8px' }}>😞</div>
+                      <div style={{ fontSize: '14px', color: '#991b1b', marginBottom: '4px', fontWeight: '600' }}>
+                        Negative
+                      </div>
+                      <div style={{ fontSize: '32px', fontWeight: '700', color: '#dc2626' }}>
+                        {batchResult.aggregated_sentiment.negative_count}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#991b1b', marginTop: '4px' }}>
+                        ({((batchResult.aggregated_sentiment.negative_count / batchResult.total_texts) * 100).toFixed(0)}%)
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{
+                    marginTop: '16px',
+                    padding: '16px',
+                    background: '#f9fafb',
+                    borderRadius: '8px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                      Average Sentiment Score
+                    </div>
+                    <div style={{ fontSize: '28px', fontWeight: '700', color: '#8b5cf6' }}>
+                      {batchResult.aggregated_sentiment.average_score.toFixed(3)}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Average Statistics */}
+              {batchResult.aggregated_statistics && (
+                <div>
+                  <h3 style={{ 
+                    marginTop: 0,
+                    marginBottom: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    📊 Aggregated Text Statistics
+                  </h3>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                    gap: '12px'
+                  }}>
+                    {[
+                      { label: 'Total Words', value: batchResult.aggregated_statistics.total_words.toLocaleString(), icon: '📝' },
+                      { label: 'Total Characters', value: batchResult.aggregated_statistics.total_chars.toLocaleString(), icon: '🔤' },
+                      { label: 'Total Sentences', value: batchResult.aggregated_statistics.total_sentences.toLocaleString(), icon: '📄' },
+                      { label: 'Unique Words', value: batchResult.aggregated_statistics.total_unique_words.toLocaleString(), icon: '✨' },
+                      { label: 'Avg Word Length', value: batchResult.aggregated_statistics.avg_word_length.toFixed(2), icon: '📏' },
+                      { label: 'Avg Lexical Diversity', value: `${(batchResult.aggregated_statistics.avg_lexical_diversity * 100).toFixed(1)}%`, icon: '🎯' },
+                    ].map((stat, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: '14px',
+                          background: '#f9fafb',
+                          borderRadius: '8px',
+                          border: '1px solid #e5e7eb'
+                        }}
+                      >
+                        <div style={{ fontSize: '20px', marginBottom: '6px' }}>{stat.icon}</div>
+                        <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
+                          {stat.label}
+                        </div>
+                        <div style={{ fontSize: '20px', fontWeight: '700' }}>
+                          {stat.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -603,6 +1089,19 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+
+        .entity {
+          cursor: help;
+          transition: all 0.2s ease;
+          display: inline;
+          position: relative;
+        }
+
+        .entity:hover {
+          filter: brightness(0.9);
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
       `}</style>
     </div>
