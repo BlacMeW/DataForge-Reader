@@ -5,8 +5,9 @@ import DatasetTemplateSelector from './components/DatasetTemplateSelector'
 import CustomTemplateDesigner from './components/CustomTemplateDesigner'
 import ProjectManager, { type Project } from './components/ProjectManager'
 import UserGuide from './components/UserGuide'
+import DataMining from './components/DataMining'
 import { useKeyboardShortcuts, showKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
-import { BookOpen, Settings, Folder, Keyboard, HelpCircle } from 'lucide-react'
+import { BookOpen, Settings, Folder, Keyboard, HelpCircle, Sparkles } from 'lucide-react'
 
 export interface UploadedFile {
   file_id: string
@@ -43,7 +44,7 @@ interface DatasetTemplate {
   }
 }
 
-type AppView = 'upload' | 'parse' | 'templates' | 'custom-template' | 'projects'
+type AppView = 'upload' | 'parse' | 'templates' | 'custom-template' | 'projects' | 'data-mining'
 
 function App() {
   const [currentFile, setCurrentFile] = useState<UploadedFile | null>(null)
@@ -51,6 +52,8 @@ function App() {
   const [selectedTemplate, setSelectedTemplate] = useState<DatasetTemplate | null>(null)
   const [currentProject, setCurrentProject] = useState<Project | null>(null)
   const [showUserGuide, setShowUserGuide] = useState<boolean>(false)
+  const [showDataMining, setShowDataMining] = useState<boolean>(false)
+  const [paragraphs, setParagraphs] = useState<ParsedParagraph[]>([])
 
   // Define keyboard shortcuts
   const keyboardShortcuts = [
@@ -71,6 +74,12 @@ function App() {
       ctrlKey: true,
       callback: () => setCurrentView('templates'),
       description: 'Go to Templates'
+    },
+    {
+      key: '4',
+      ctrlKey: true,
+      callback: () => setShowDataMining(true),
+      description: 'Open Data Mining'
     },
     {
       key: 'h',
@@ -169,6 +178,25 @@ function App() {
               Templates
             </button>
             
+            <button 
+              onClick={() => setShowDataMining(true)}
+              style={{ 
+                background: 'transparent',
+                color: '#8b5cf6',
+                border: '1px solid #8b5cf6',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                fontWeight: '500'
+              }}
+              title="NLP Data Mining (Ctrl+4)"
+            >
+              <Sparkles size={16} style={{ marginRight: '6px' }} />
+              Data Mining
+            </button>
+            
             <div style={{ borderLeft: '1px solid #e5e7eb', height: '24px', margin: '0 8px' }}></div>
             
             <button 
@@ -246,6 +274,7 @@ function App() {
               <ParseViewer 
                 file={currentFile} 
                 onClose={() => setCurrentFile(null)}
+                onParagraphsLoad={setParagraphs}
               />
             ) : (
               <FileUpload onFileUploaded={setCurrentFile} />
@@ -302,6 +331,14 @@ function App() {
         isOpen={showUserGuide} 
         onClose={() => setShowUserGuide(false)} 
       />
+
+      {/* Data Mining Modal */}
+      {showDataMining && paragraphs.length > 0 && (
+        <DataMining 
+          paragraphs={paragraphs}
+          onClose={() => setShowDataMining(false)}
+        />
+      )}
     </div>
   )
 }

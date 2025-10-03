@@ -8,11 +8,12 @@ import DataAnalytics from './DataAnalytics'
 interface ParseViewerProps {
   file: UploadedFile
   onClose: () => void
+  onParagraphsLoad?: (paragraphs: ParsedParagraph[]) => void
 }
 
 const API_BASE_URL = 'http://localhost:8000/api'
 
-const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
+const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose, onParagraphsLoad }) => {
   const [paragraphs, setParagraphs] = useState<ParsedParagraph[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>('')
@@ -75,6 +76,12 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose }) => {
       setProcessingProgress(70)
       
       setParagraphs(response.data.paragraphs)
+      
+      // Notify parent component if callback provided
+      if (onParagraphsLoad) {
+        onParagraphsLoad(response.data.paragraphs)
+      }
+      
       setProcessingInfo({
         totalPages: response.data.total_pages,
         extractionMethod: response.data.extraction_method,
