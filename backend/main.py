@@ -144,7 +144,7 @@ def get_user_guide():
     """Serve the user guide documentation"""
     try:
         import os
-        guide_path = os.path.join(os.path.dirname(__file__), "..", "USER_GUIDE.md")
+        guide_path = os.path.join(os.path.dirname(__file__), "..", "docs", "user-guides", "USER_GUIDE.md")
         with open(guide_path, "r", encoding="utf-8") as f:
             content = f.read()
         return {"content": content, "format": "markdown"}
