@@ -9,8 +9,9 @@ import UserGuide from './components/UserGuide'
 import DataMining from './components/DataMining'
 import ProjectAnalytics from './components/ProjectAnalytics'
 import AnalyticsDashboard from './components/AnalyticsDashboard'
+import DataAnalysisWizard from './components/DataAnalysisWizard'
 import { useKeyboardShortcuts, showKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
-import { BookOpen, Settings, Folder, Keyboard, HelpCircle, Sparkles, BarChart3 } from 'lucide-react'
+import { BookOpen, Settings, Folder, Keyboard, HelpCircle, Sparkles, BarChart3, Wand2 } from 'lucide-react'
 
 export interface UploadedFile {
   file_id: string
@@ -47,7 +48,7 @@ interface DatasetTemplate {
   }
 }
 
-type AppView = 'upload' | 'parse' | 'templates' | 'custom-template' | 'manage-templates' | 'projects' | 'data-mining' | 'analytics-dashboard'
+type AppView = 'upload' | 'parse' | 'templates' | 'custom-template' | 'manage-templates' | 'projects' | 'data-mining' | 'analytics-dashboard' | 'data-analysis-wizard'
 
 function App() {
   const [currentFile, setCurrentFile] = useState<UploadedFile | null>(null)
@@ -57,6 +58,7 @@ function App() {
   const [showUserGuide, setShowUserGuide] = useState<boolean>(false)
   const [showDataMining, setShowDataMining] = useState<boolean>(false)
   const [showProjectAnalytics, setShowProjectAnalytics] = useState<boolean>(false)
+  const [showDataAnalysisWizard, setShowDataAnalysisWizard] = useState<boolean>(false)
   const [paragraphs, setParagraphs] = useState<ParsedParagraph[]>([])
   const [keywords] = useState<Array<{ keyword: string; score: number }>>([])
   const [entities] = useState<Array<{ text: string; label: string; count: number }>>([])
@@ -92,6 +94,12 @@ function App() {
       ctrlKey: true,
       callback: () => setShowDataMining(true),
       description: 'Open Data Mining'
+    },
+    {
+      key: '6',
+      ctrlKey: true,
+      callback: () => setShowDataAnalysisWizard(true),
+      description: 'Open Data Analysis Wizard'
     },
     {
       key: 'h',
@@ -204,6 +212,23 @@ function App() {
             >
               <BarChart3 size={16} style={{ marginRight: '6px' }} />
               Analytics
+            </button>
+            
+            <button 
+              onClick={() => setShowDataAnalysisWizard(true)}
+              style={{ 
+                background: 'transparent',
+                color: '#6b7280',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <Wand2 size={16} style={{ marginRight: '6px' }} />
+              Analysis Wizard
             </button>
             
             <button 
@@ -401,6 +426,15 @@ function App() {
         <ProjectAnalytics 
           project={currentProject}
           onClose={() => setShowProjectAnalytics(false)}
+        />
+      )}
+
+      {/* Data Analysis Wizard Modal */}
+      {showDataAnalysisWizard && (
+        <DataAnalysisWizard
+          paragraphs={paragraphs}
+          filename={currentFile?.filename || 'Unknown File'}
+          onClose={() => setShowDataAnalysisWizard(false)}
         />
       )}
     </div>
