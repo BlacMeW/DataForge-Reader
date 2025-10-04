@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { TrendingUp, BarChart3, PieChart, Users, FileText, Calendar, X, Loader, AlertCircle, Award, Target, Zap } from 'lucide-react'
+import { TrendingUp, BarChart3, PieChart, Users, FileText, Calendar, X, Loader, AlertCircle, Award, Target, Zap, Cloud } from 'lucide-react'
+import ReactWordcloud from 'react-wordcloud'
 import type { Project } from './ProjectManager'
 import { 
   analyzeBatchTexts, 
@@ -25,7 +26,7 @@ const ProjectAnalytics: React.FC<ProjectAnalyticsProps> = ({ project, onClose })
   const [fileAnalyses, setFileAnalyses] = useState<FileAnalysis[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>('')
-  const [activeTab, setActiveTab] = useState<'overview' | 'entities' | 'keywords' | 'sentiment' | 'trends'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'entities' | 'keywords' | 'wordclouds' | 'sentiment' | 'trends'>('overview')
 
   // Initialize file analyses
   useEffect(() => {
@@ -307,6 +308,7 @@ const ProjectAnalytics: React.FC<ProjectAnalyticsProps> = ({ project, onClose })
             { id: 'overview', label: 'Overview', icon: Target },
             { id: 'entities', label: 'Entities', icon: Users },
             { id: 'keywords', label: 'Keywords', icon: TrendingUp },
+            { id: 'wordclouds', label: 'Word Clouds', icon: Cloud },
             { id: 'sentiment', label: 'Sentiment', icon: PieChart },
             { id: 'trends', label: 'Trends', icon: Calendar }
           ] as const).map(tab => (
@@ -766,6 +768,113 @@ const ProjectAnalytics: React.FC<ProjectAnalyticsProps> = ({ project, onClose })
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Word Clouds Tab */}
+              {activeTab === 'wordclouds' && (
+                <div>
+                  <h3 style={{ margin: '0 0 16px', fontSize: '20px', color: '#1f2937' }}>Word Clouds</h3>
+                  
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+                    gap: '24px'
+                  }}>
+                    {/* Keywords Word Cloud */}
+                    <div style={{
+                      background: '#f9fafb',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      padding: '24px'
+                    }}>
+                      <h4 style={{ margin: '0 0 16px', fontSize: '16px', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <TrendingUp size={18} />
+                        Keywords Cloud
+                      </h4>
+                      {aggregatedData.keywords.length > 0 ? (
+                        <div style={{ height: '300px', width: '100%' }}>
+                          <ReactWordcloud
+                            words={aggregatedData.keywords.slice(0, 50).map(kw => ({
+                              text: kw.keyword,
+                              value: Math.max(kw.avgScore * 1000, 10) // Scale up for better visualization
+                            }))}
+                            options={{
+                              rotations: 2,
+                              rotationAngles: [0, 90],
+                              fontSizes: [14, 60],
+                              fontFamily: 'system-ui, -apple-system, sans-serif',
+                              fontWeight: '600',
+                              padding: 4,
+                              scale: 'sqrt',
+                              spiral: 'archimedean',
+                              transitionDuration: 1000,
+                              colors: [
+                                '#8b5cf6', '#6366f1', '#3b82f6', 
+                                '#0ea5e9', '#06b6d4', '#14b8a6',
+                                '#10b981', '#84cc16', '#eab308',
+                                '#f97316', '#ef4444', '#ec4899'
+                              ],
+                              enableTooltip: true,
+                              deterministic: true,
+                              enableOptimizations: true
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', color: '#6b7280', padding: '60px' }}>
+                          No keywords available
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Entities Word Cloud */}
+                    <div style={{
+                      background: '#f9fafb',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      padding: '24px'
+                    }}>
+                      <h4 style={{ margin: '0 0 16px', fontSize: '16px', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Users size={18} />
+                        Entities Cloud
+                      </h4>
+                      {aggregatedData.entities.length > 0 ? (
+                        <div style={{ height: '300px', width: '100%' }}>
+                          <ReactWordcloud
+                            words={aggregatedData.entities.slice(0, 50).map(entity => ({
+                              text: entity.text,
+                              value: Math.max(entity.count * 20, 10) // Scale based on frequency
+                            }))}
+                            options={{
+                              rotations: 2,
+                              rotationAngles: [0, 90],
+                              fontSizes: [14, 60],
+                              fontFamily: 'system-ui, -apple-system, sans-serif',
+                              fontWeight: '600',
+                              padding: 4,
+                              scale: 'sqrt',
+                              spiral: 'archimedean',
+                              transitionDuration: 1000,
+                              colors: [
+                                '#dc2626', '#ea580c', '#d97706',
+                                '#65a30d', '#059669', '#0891b2',
+                                '#2563eb', '#7c3aed', '#c026d3',
+                                '#db2777', '#be185d', '#991b1b'
+                              ],
+                              enableTooltip: true,
+                              deterministic: true,
+                              enableOptimizations: true
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', color: '#6b7280', padding: '60px' }}>
+                          No entities available
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import { BarChart, PieChart, TrendingUp, FileText, Hash, Clock, Eye } from 'lucide-react'
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie, Legend } from 'recharts'
 import type { ParsedParagraph } from '../App'
 
 interface DataAnalyticsProps {
@@ -67,7 +68,30 @@ const DataAnalytics: React.FC<DataAnalyticsProps> = ({
       totalPages: Object.keys(pageDistribution).length,
       paragraphsPerPage: Math.round(paragraphs.length / Object.keys(pageDistribution).length)
     }
-  }, [paragraphs])
+    }, [paragraphs])
+
+  // Prepare chart data
+  const chartData = useMemo(() => {
+    if (!analytics) return { wordCountData: [], pageData: [] }
+
+    // Word count distribution data for pie chart
+    const wordCountData = Object.entries(analytics.wordCountRanges).map(([range, count]) => ({
+      name: range,
+      value: count as number,
+      percentage: Math.round(((count as number) / paragraphs.length) * 100)
+    }))
+
+    // Page distribution data for bar chart (first 15 pages)
+    const pageData = Object.entries(analytics.pageDistribution)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .slice(0, 15)
+      .map(([page, count]) => ({
+        page: `Page ${page}`,
+        paragraphs: count as number
+      }))
+
+    return { wordCountData, pageData }
+  }, [paragraphs, analytics])
 
   if (!analytics) {
     return (
@@ -113,40 +137,8 @@ const DataAnalytics: React.FC<DataAnalyticsProps> = ({
     </div>
   )
 
-  const ChartBar: React.FC<{
-    label: string
-    value: number
-    maxValue: number
-    color?: string
-  }> = ({ label, value, maxValue, color = '#3b82f6' }) => (
-    <div style={{ marginBottom: '12px' }}>
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        marginBottom: '4px',
-        fontSize: '12px',
-        color: '#374151'
-      }}>
-        <span>{label}</span>
-        <span>{value}</span>
-      </div>
-      <div style={{
-        width: '100%',
-        height: '8px',
-        backgroundColor: '#f3f4f6',
-        borderRadius: '4px',
-        overflow: 'hidden'
-      }}>
-        <div style={{
-          width: `${(value / maxValue) * 100}%`,
-          height: '100%',
-          backgroundColor: color,
-          borderRadius: '4px',
-          transition: 'width 0.3s ease'
-        }} />
-      </div>
-    </div>
-  )
+  // Chart colors
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
   return (
     <div style={{ padding: '20px', backgroundColor: '#f8fafc' }}>
@@ -220,15 +212,32 @@ const DataAnalytics: React.FC<DataAnalyticsProps> = ({
             <PieChart size={18} />
             Paragraph Length Distribution
           </h4>
-          {Object.entries(analytics.wordCountRanges).map(([range, count]) => (
-            <ChartBar
-              key={range}
-              label={range}
-              value={count}
-              maxValue={Math.max(...Object.values(analytics.wordCountRanges))}
-              color="#3b82f6"
-            />
-          ))}
+          {chartData.wordCountData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <RechartsPieChart>
+                <Pie
+                  data={chartData.wordCountData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percentage }) => `${name}: ${percentage}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {chartData.wordCountData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number) => [value, 'Paragraphs']} />
+                <Legend />
+              </RechartsPieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ textAlign: 'center', color: '#6b7280', padding: '40px' }}>
+              No data available
+            </div>
+          )}
         </div>
 
         {/* Page Distribution */}
@@ -249,21 +258,33 @@ const DataAnalytics: React.FC<DataAnalyticsProps> = ({
             <BarChart size={18} />
             Paragraphs per Page
           </h4>
-          {Object.entries(analytics.pageDistribution)
-            .sort(([a], [b]) => Number(a) - Number(b))
-            .slice(0, 10) // Show first 10 pages
-            .map(([page, count]) => (
-            <ChartBar
-              key={page}
-              label={`Page ${page}`}
-              value={count}
-              maxValue={Math.max(...Object.values(analytics.pageDistribution))}
-              color="#10b981"
-            />
-          ))}
-          {Object.keys(analytics.pageDistribution).length > 10 && (
+          {chartData.pageData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <RechartsBarChart data={chartData.pageData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="page" 
+                  tick={{ fontSize: 12 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip 
+                  formatter={(value: number) => [value, 'Paragraphs']}
+                  labelFormatter={(label) => `Page: ${label}`}
+                />
+                <Bar dataKey="paragraphs" fill="#10b981" />
+              </RechartsBarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ textAlign: 'center', color: '#6b7280', padding: '40px' }}>
+              No page data available
+            </div>
+          )}
+          {Object.keys(analytics.pageDistribution).length > 15 && (
             <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px', fontStyle: 'italic' }}>
-              Showing first 10 pages of {Object.keys(analytics.pageDistribution).length} total
+              Showing first 15 pages of {Object.keys(analytics.pageDistribution).length} total
             </p>
           )}
         </div>

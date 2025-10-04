@@ -7,8 +7,9 @@ import ProjectManager, { type Project } from './components/ProjectManager'
 import UserGuide from './components/UserGuide'
 import DataMining from './components/DataMining'
 import ProjectAnalytics from './components/ProjectAnalytics'
+import AnalyticsDashboard from './components/AnalyticsDashboard'
 import { useKeyboardShortcuts, showKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
-import { BookOpen, Settings, Folder, Keyboard, HelpCircle, Sparkles } from 'lucide-react'
+import { BookOpen, Settings, Folder, Keyboard, HelpCircle, Sparkles, BarChart3 } from 'lucide-react'
 
 export interface UploadedFile {
   file_id: string
@@ -45,7 +46,7 @@ interface DatasetTemplate {
   }
 }
 
-type AppView = 'upload' | 'parse' | 'templates' | 'custom-template' | 'projects' | 'data-mining'
+type AppView = 'upload' | 'parse' | 'templates' | 'custom-template' | 'projects' | 'data-mining' | 'analytics-dashboard'
 
 function App() {
   const [currentFile, setCurrentFile] = useState<UploadedFile | null>(null)
@@ -56,6 +57,8 @@ function App() {
   const [showDataMining, setShowDataMining] = useState<boolean>(false)
   const [showProjectAnalytics, setShowProjectAnalytics] = useState<boolean>(false)
   const [paragraphs, setParagraphs] = useState<ParsedParagraph[]>([])
+  const [keywords] = useState<Array<{ keyword: string; score: number }>>([])
+  const [entities] = useState<Array<{ text: string; label: string; count: number }>>([])
 
   // Define keyboard shortcuts
   const keyboardShortcuts = [
@@ -76,6 +79,12 @@ function App() {
       ctrlKey: true,
       callback: () => setCurrentView('templates'),
       description: 'Go to Templates'
+    },
+    {
+      key: '5',
+      ctrlKey: true,
+      callback: () => setCurrentView('analytics-dashboard'),
+      description: 'Go to Analytics Dashboard'
     },
     {
       key: '4',
@@ -178,6 +187,22 @@ function App() {
             >
               <Settings size={16} style={{ marginRight: '6px' }} />
               Templates
+            </button>
+            <button 
+              onClick={() => setCurrentView('analytics-dashboard')}
+              style={{ 
+                background: currentView === 'analytics-dashboard' ? '#e0e7ff' : 'transparent',
+                color: currentView === 'analytics-dashboard' ? '#1e40af' : '#6b7280',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <BarChart3 size={16} style={{ marginRight: '6px' }} />
+              Analytics
             </button>
             
             <button 
@@ -318,6 +343,16 @@ function App() {
               setCurrentView('parse')
             }}
             currentProject={currentProject || undefined}
+          />
+        )}
+        
+        {currentView === 'analytics-dashboard' && (
+          <AnalyticsDashboard 
+            paragraphs={paragraphs}
+            filename={currentFile?.filename || 'No file selected'}
+            processingInfo={undefined} // Could be enhanced to pass actual processing info
+            keywords={keywords}
+            entities={entities}
           />
         )}
       </main>
