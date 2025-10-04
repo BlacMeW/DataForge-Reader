@@ -25,7 +25,7 @@ class CustomDatasetRequest(BaseModel):
 
 # Get storage directory
 def get_storage_dir():
-    return os.environ.get("DATAFORGE_STORAGE_DIR", "../storage")
+    return os.environ.get("DATAFORGE_STORAGE_DIR", "./storage")
 
 def get_templates_dir():
     """Get directory for storing custom templates"""
@@ -180,14 +180,6 @@ async def get_predefined_templates():
         "count": len(PREDEFINED_TEMPLATES)
     }
 
-@router.get("/templates/{template_id}")
-async def get_template(template_id: str):
-    """Get a specific template by ID"""
-    if template_id not in PREDEFINED_TEMPLATES:
-        raise HTTPException(status_code=404, detail="Template not found")
-    
-    return PREDEFINED_TEMPLATES[template_id]
-
 @router.get("/templates/custom")
 async def get_custom_templates():
     """Get all custom templates"""
@@ -251,6 +243,14 @@ async def delete_custom_template(template_id: str):
         "message": "Custom template deleted successfully",
         "template_id": template_id
     }
+
+@router.get("/templates/{template_id}")
+async def get_template(template_id: str):
+    """Get a specific template by ID"""
+    if template_id not in PREDEFINED_TEMPLATES:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    return PREDEFINED_TEMPLATES[template_id]
 
 @router.post("/templates/{template_id}/apply")
 async def apply_template_to_file(template_id: str, file_id: str):
