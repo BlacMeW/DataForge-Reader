@@ -3,6 +3,7 @@ import FileUpload from './components/FileUpload'
 import ParseViewer from './components/ParseViewer'
 import DatasetTemplateSelector from './components/DatasetTemplateSelector'
 import CustomTemplateDesigner from './components/CustomTemplateDesigner'
+import CustomTemplateManager from './components/CustomTemplateManager'
 import ProjectManager, { type Project } from './components/ProjectManager'
 import UserGuide from './components/UserGuide'
 import DataMining from './components/DataMining'
@@ -46,7 +47,7 @@ interface DatasetTemplate {
   }
 }
 
-type AppView = 'upload' | 'parse' | 'templates' | 'custom-template' | 'projects' | 'data-mining' | 'analytics-dashboard'
+type AppView = 'upload' | 'parse' | 'templates' | 'custom-template' | 'manage-templates' | 'projects' | 'data-mining' | 'analytics-dashboard'
 
 function App() {
   const [currentFile, setCurrentFile] = useState<UploadedFile | null>(null)
@@ -316,6 +317,7 @@ function App() {
               setCurrentView('upload')
             }}
             onCustomTemplate={() => setCurrentView('custom-template')}
+            onManageTemplates={() => setCurrentView('manage-templates')}
           />
         )}
         
@@ -325,6 +327,17 @@ function App() {
               setSelectedTemplate(template)
               setCurrentView('templates')
             }}
+            onBack={() => setCurrentView('templates')}
+          />
+        )}
+
+        {currentView === 'manage-templates' && (
+          <CustomTemplateManager
+            onTemplateSelected={(template) => {
+              setSelectedTemplate(template)
+              setCurrentView('upload')
+            }}
+            onCreateNew={() => setCurrentView('custom-template')}
             onBack={() => setCurrentView('templates')}
           />
         )}

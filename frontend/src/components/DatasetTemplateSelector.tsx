@@ -25,13 +25,15 @@ interface DatasetTemplate {
 interface DatasetTemplateProps {
   onTemplateSelected: (template: DatasetTemplate) => void
   onCustomTemplate: () => void
+  onManageTemplates: () => void
 }
 
 const API_BASE_URL = 'http://localhost:8000/api'
 
 const DatasetTemplateSelector: React.FC<DatasetTemplateProps> = ({ 
   onTemplateSelected, 
-  onCustomTemplate 
+  onCustomTemplate,
+  onManageTemplates
 }) => {
   const [templates, setTemplates] = useState<DatasetTemplate[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,7 +48,21 @@ const DatasetTemplateSelector: React.FC<DatasetTemplateProps> = ({
       console.log('Loading templates from:', `${API_BASE_URL}/dataset/templates`)
       const response = await axios.get(`${API_BASE_URL}/dataset/templates`)
       console.log('Templates loaded:', response.data)
-      setTemplates(response.data.templates || [])
+      
+      // Load custom templates
+      let customTemplates: DatasetTemplate[] = []
+      try {
+        const customResponse = await axios.get(`${API_BASE_URL}/dataset/templates/custom`)
+        customTemplates = customResponse.data.templates || []
+        console.log('Custom templates loaded:', customTemplates)
+      } catch (customError) {
+        console.warn('Failed to load custom templates:', customError)
+        // Don't fail completely if custom templates can't be loaded
+      }
+      
+      // Combine predefined and custom templates
+      const allTemplates = [...(response.data.templates || []), ...customTemplates]
+      setTemplates(allTemplates)
       setLoading(false)
     } catch (error) {
       console.error('Failed to load templates:', error)
@@ -153,15 +169,29 @@ const DatasetTemplateSelector: React.FC<DatasetTemplateProps> = ({
           >
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
               {getTemplateIcon(template.task_type)}
-              <div style={{ marginLeft: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px' }}>{template.name}</h3>
+              <div style={{ marginLeft: '12px', flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px' }}>{template.name}</h3>
+                  {template.task_type === 'custom' && (
+                    <span style={{ 
+                      fontSize: '10px', 
+                      background: '#fef3c7',
+                      color: '#92400e',
+                      padding: '2px 6px',
+                      borderRadius: '3px',
+                      fontWeight: 'bold'
+                    }}>
+                      CUSTOM
+                    </span>
+                  )}
+                </div>
                 <span style={{ 
                   fontSize: '12px', 
                   color: '#6b7280',
                   textTransform: 'uppercase',
                   fontWeight: 'bold'
                 }}>
-                  {template.task_type}
+                  {template.task_type === 'custom' ? 'Custom Template' : template.task_type}
                 </span>
               </div>
             </div>
@@ -210,6 +240,30 @@ const DatasetTemplateSelector: React.FC<DatasetTemplateProps> = ({
             Create your own dataset structure with custom fields and annotation schema
           </p>
         </div>
+
+        {/* Manage Custom Templates Option */}
+        {templates.some(t => t.task_type === 'custom') && (
+          <div
+            className="file-info"
+            onClick={onManageTemplates}
+            style={{ 
+              cursor: 'pointer',
+              border: '1px solid #e5e7eb',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '200px',
+              background: '#f9fafb'
+            }}
+          >
+            <Settings size={48} color="#6b7280" />
+            <h3 style={{ marginTop: '15px', color: '#4b5563' }}>Manage Templates</h3>
+            <p style={{ textAlign: 'center', color: '#6b7280' }}>
+              Edit and delete your saved custom templates
+            </p>
+          </div>
+        )}
       </div>
 
       {selectedTemplate && (

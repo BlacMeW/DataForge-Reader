@@ -2,8 +2,63 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import json
+import os
+import uuid
+from datetime import datetime
 
 router = APIRouter()
+
+class DatasetTemplate(BaseModel):
+    id: str
+    name: str
+    description: str
+    task_type: str  # "classification", "ner", "sentiment", "qa", "custom"
+    fields: List[Dict[str, Any]]
+    annotation_schema: Dict[str, Any]
+    export_format: str  # "csv", "jsonl", "huggingface"
+
+class CustomDatasetRequest(BaseModel):
+    name: str
+    description: str
+    fields: List[Dict[str, Any]]
+    annotation_schema: Dict[str, Any]
+
+# Get storage directory
+def get_storage_dir():
+    return os.environ.get("DATAFORGE_STORAGE_DIR", "../storage")
+
+def get_templates_dir():
+    """Get directory for storing custom templates"""
+    storage_dir = get_storage_dir()
+    templates_dir = f"{storage_dir}/templates"
+    os.makedirs(templates_dir, exist_ok=True)
+    return templates_dir
+
+def load_custom_templates() -> Dict[str, DatasetTemplate]:
+    """Load custom templates from storage"""
+    templates_dir = get_templates_dir()
+    custom_templates = {}
+    
+    for filename in os.listdir(templates_dir):
+        if filename.endswith('.json'):
+            try:
+                with open(os.path.join(templates_dir, filename), 'r', encoding='utf-8') as f:
+                    template_data = json.load(f)
+                    template = DatasetTemplate(**template_data)
+                    custom_templates[template.id] = template
+            except Exception as e:
+                print(f"Error loading template {filename}: {e}")
+    
+    return custom_templates
+
+def save_custom_template(template: DatasetTemplate):
+    """Save a custom template to storage"""
+    templates_dir = get_templates_dir()
+    filename = f"{template.id}.json"
+    filepath = os.path.join(templates_dir, filename)
+    
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(template.dict(), f, indent=2, ensure_ascii=False)
 
 class DatasetTemplate(BaseModel):
     id: str
@@ -133,11 +188,34 @@ async def get_template(template_id: str):
     
     return PREDEFINED_TEMPLATES[template_id]
 
-@router.post("/templates/custom")
-async def create_custom_template(request: CustomDatasetRequest):
-    """Create a custom dataset template"""
-    template = DatasetTemplate(
-        id=f"custom_{request.name.lower().replace(' ', '_')}",
+@router.get("/templates/custom")
+async def get_custom_templates():
+    """Get all custom templates"""
+    custom_templates = load_custom_templates()
+    return {
+        "templates": list(custom_templates.values()),
+        "count": len(custom_templates)
+    }
+
+@router.get("/templates/custom/{template_id}")
+async def get_custom_template(template_id: str):
+    """Get a specific custom template by ID"""
+    custom_templates = load_custom_templates()
+    if template_id not in custom_templates:
+        raise HTTPException(status_code=404, detail="Custom template not found")
+    
+    return custom_templates[template_id]
+
+@router.put("/templates/custom/{template_id}")
+async def update_custom_template(template_id: str, request: CustomDatasetRequest):
+    """Update a custom template"""
+    custom_templates = load_custom_templates()
+    if template_id not in custom_templates:
+        raise HTTPException(status_code=404, detail="Custom template not found")
+    
+    # Update the template
+    updated_template = DatasetTemplate(
+        id=template_id,
         name=request.name,
         description=request.description,
         task_type="custom",
@@ -146,11 +224,32 @@ async def create_custom_template(request: CustomDatasetRequest):
         export_format="jsonl"
     )
     
-    # In a real app, you'd save this to database
-    # For now, just return the created template
+    # Save the updated template
+    save_custom_template(updated_template)
+    
     return {
-        "message": "Custom template created successfully",
-        "template": template
+        "message": "Custom template updated successfully",
+        "template": updated_template
+    }
+
+@router.delete("/templates/custom/{template_id}")
+async def delete_custom_template(template_id: str):
+    """Delete a custom template"""
+    custom_templates = load_custom_templates()
+    if template_id not in custom_templates:
+        raise HTTPException(status_code=404, detail="Custom template not found")
+    
+    # Delete the template file
+    templates_dir = get_templates_dir()
+    filename = f"{template_id}.json"
+    filepath = os.path.join(templates_dir, filename)
+    
+    if os.path.exists(filepath):
+        os.remove(filepath)
+    
+    return {
+        "message": "Custom template deleted successfully",
+        "template_id": template_id
     }
 
 @router.post("/templates/{template_id}/apply")
