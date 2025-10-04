@@ -240,14 +240,36 @@ class TextAnalyzer:
     def get_text_summary(self, text: str) -> Dict[str, Any]:
         """Get comprehensive text summary"""
         words = text.split()
-        sentences = re.findall(r'[.!?]+', text)
+        
+        # Count sentences - use spaCy if available, otherwise simple count
+        if self.spacy_available and self.nlp:
+            # Use spaCy for sentence splitting
+            doc = self.nlp(text)
+            sentences = list(doc.sents)
+            sentence_count = len(sentences)
+        else:
+            # Fallback: count likely sentence endings (punctuation at end of text or followed by capital)
+            # But be conservative - don't split on abbreviations
+            import re
+            # Simple approach: split on punctuation followed by space and capital letter, or end of text
+            parts = re.split(r'([.!?]+)\s*', text)
+            sentence_count = 1
+            i = 0
+            while i < len(parts) - 1:
+                if parts[i+1] in ['.', '!', '?']:
+                    # Check if followed by capital letter
+                    remaining = ''.join(parts[i+2:])
+                    remaining = remaining.lstrip()
+                    if not remaining or remaining[0].isupper():
+                        sentence_count += 1
+                i += 2
         
         return {
             "word_count": len(words),
             "char_count": len(text),
-            "sentence_count": len(sentences),
+            "sentence_count": sentence_count,
             "avg_word_length": round(sum(len(w) for w in words) / max(len(words), 1), 2),
-            "avg_sentence_length": round(len(words) / max(len(sentences), 1), 2),
+            "avg_sentence_length": round(len(words) / max(sentence_count, 1), 2),
             "unique_words": len(set(w.lower() for w in words)),
             "lexical_diversity": round(len(set(w.lower() for w in words)) / max(len(words), 1), 3)
         }

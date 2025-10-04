@@ -10,6 +10,9 @@ import tempfile
 import re
 import json
 import time
+import logging
+import warnings
+import sys
 
 # Get upload directory from environment variable or use default
 def get_upload_dir():
@@ -19,6 +22,33 @@ from typing import List, Dict, Any
 import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup
+
+# Context manager to suppress PDF parsing warnings
+class SuppressPDFWarnings:
+    """Context manager to suppress PyMuPDF stderr warnings during PDF operations"""
+    
+    def __init__(self):
+        self.original_stderr = None
+        self.devnull = None
+    
+    def __enter__(self):
+        # Redirect stderr to suppress PyMuPDF warnings
+        self.original_stderr = sys.stderr
+        self.devnull = open(os.devnull, 'w')
+        sys.stderr = self.devnull
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # Restore original stderr
+        if self.original_stderr:
+            sys.stderr = self.original_stderr
+        if self.devnull:
+            self.devnull.close()
+        return False
+
+# Configure warnings to suppress PDF-related warnings
+warnings.filterwarnings("ignore", message=".*invalid float value.*")
+warnings.filterwarnings("ignore", message=".*Cannot set gray.*")
 
 router = APIRouter()
 
@@ -98,16 +128,17 @@ def extract_text_pdfplumber(file_path: str) -> tuple[List[Dict[str, Any]], str]:
     paragraphs = []
     
     try:
-        with pdfplumber.open(file_path) as pdf:
-            total_pages = len(pdf.pages)
-            
-            for page_num, page in enumerate(pdf.pages, 1):
-                text = page.extract_text()
-                if text and text.strip():
-                    page_paragraphs = extract_paragraphs_from_text(text, page_num)
-                    paragraphs.extend(page_paragraphs)
-            
-            return paragraphs, "pdfplumber"
+        with SuppressPDFWarnings():
+            with pdfplumber.open(file_path) as pdf:
+                total_pages = len(pdf.pages)
+                
+                for page_num, page in enumerate(pdf.pages, 1):
+                    text = page.extract_text()
+                    if text and text.strip():
+                        page_paragraphs = extract_paragraphs_from_text(text, page_num)
+                        paragraphs.extend(page_paragraphs)
+                
+                return paragraphs, "pdfplumber"
     
     except Exception as e:
         raise Exception(f"PDFplumber extraction failed: {str(e)}")
@@ -136,18 +167,19 @@ def extract_text_ocr(file_path: str) -> tuple[List[Dict[str, Any]], str]:
 def detect_scanned_pdf(file_path: str) -> bool:
     """Detect if PDF is scanned by checking text content"""
     try:
-        with pdfplumber.open(file_path) as pdf:
-            # Check first few pages for text content
-            pages_to_check = min(3, len(pdf.pages))
-            total_text = ""
-            
-            for i in range(pages_to_check):
-                text = pdf.pages[i].extract_text()
-                if text:
-                    total_text += text
-            
-            # If very little text found, likely scanned
-            return len(total_text.strip()) < 100
+        with SuppressPDFWarnings():
+            with pdfplumber.open(file_path) as pdf:
+                # Check first few pages for text content
+                pages_to_check = min(3, len(pdf.pages))
+                total_text = ""
+                
+                for i in range(pages_to_check):
+                    text = pdf.pages[i].extract_text()
+                    if text:
+                        total_text += text
+                
+                # If very little text found, likely scanned
+                return len(total_text.strip()) < 100
     
     except Exception:
         return True  # Assume scanned if detection fails
@@ -255,8 +287,9 @@ async def parse_file(request: ParseRequest):
             
             # Get total pages for PDF
             try:
-                with pdfplumber.open(file_path) as pdf:
-                    total_pages = len(pdf.pages)
+                with SuppressPDFWarnings():
+                    with pdfplumber.open(file_path) as pdf:
+                        total_pages = len(pdf.pages)
             except:
                 total_pages = len(set(p["page"] for p in paragraphs)) if paragraphs else 0
         

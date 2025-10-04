@@ -84,6 +84,8 @@ Thumbs.db
 # Application specific
 storage/uploads/*
 !storage/uploads/.gitkeep
+storage/cache/*
+!storage/cache/.gitkeep
 dataset_exports/*
 !dataset_exports/.gitkeep
 
@@ -100,3 +102,4 @@ test_*.py
 AppDir/
 *.AppImage
 appimagetool-*.AppImage
+
