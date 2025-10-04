@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import {
-  ChevronRight,
   ChevronLeft,
+  ChevronRight,
   Check,
   BarChart3,
   FileText,
@@ -17,7 +17,6 @@ import {
 import type { ParsedParagraph } from '../App'
 import DataAnalytics from './DataAnalytics'
 import DataMining from './DataMining'
-import AnalyticsDashboard from './AnalyticsDashboard'
 
 interface DataAnalysisWizardProps {
   paragraphs: ParsedParagraph[]
@@ -63,7 +62,7 @@ const DataAnalysisWizard: React.FC<DataAnalysisWizardProps> = ({
             <p className="text-yellow-700 mb-4">
               You need to upload and parse a document first before you can use the Data Analysis Wizard.
             </p>
-            <button
+                        <button
               onClick={onClose}
               className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors"
             >
@@ -124,7 +123,7 @@ const DataAnalysisWizard: React.FC<DataAnalysisWizardProps> = ({
           </div>
         </div>
       ),
-      completed: true,
+      completed: completedSteps.has(0) || currentStep > 0 || paragraphs.length > 0,
       skippable: false
     },
     {
@@ -139,7 +138,7 @@ const DataAnalysisWizard: React.FC<DataAnalysisWizardProps> = ({
           processingInfo={processingInfo}
         />
       ),
-      completed: completedSteps.has(1),
+      completed: completedSteps.has(1) || currentStep >= 1,
       skippable: false
     },
     {
@@ -164,6 +163,8 @@ const DataAnalysisWizard: React.FC<DataAnalysisWizardProps> = ({
           <DataMining
             paragraphs={paragraphs}
             onClose={() => {}} // Handled by wizard
+            showCloseButton={false}
+            isEmbedded={true}
           />
         </div>
       ),
@@ -176,15 +177,40 @@ const DataAnalysisWizard: React.FC<DataAnalysisWizardProps> = ({
       description: 'Comprehensive insights and visualizations',
       icon: <TrendingUp className="w-5 h-5" />,
       component: (
-        <AnalyticsDashboard
-          paragraphs={paragraphs}
-          filename={filename}
-          processingInfo={processingInfo}
-          keywords={[]} // Will be populated from NLP analysis
-          entities={[]} // Will be populated from NLP analysis
-        />
+        <div className="space-y-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-blue-900 mb-4">Advanced Analytics Dashboard</h3>
+            <p className="text-blue-700 mb-4">
+              This dashboard provides comprehensive insights and visualizations for your data analysis.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{paragraphs.length}</div>
+                <div className="text-sm text-gray-600">Total Paragraphs</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {paragraphs.reduce((sum, p) => sum + p.word_count, 0)}
+                </div>
+                <div className="text-sm text-gray-600">Total Words</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  {Math.max(...paragraphs.map(p => p.page), 0)}
+                </div>
+                <div className="text-sm text-gray-600">Pages</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-600">
+                  {processingInfo?.processingTime || 0}s
+                </div>
+                <div className="text-sm text-gray-600">Processing Time</div>
+              </div>
+            </div>
+          </div>
+        </div>
       ),
-      completed: completedSteps.has(3),
+      completed: completedSteps.has(3) || currentStep >= 3,
       skippable: false
     },
     {
@@ -242,7 +268,7 @@ const DataAnalysisWizard: React.FC<DataAnalysisWizardProps> = ({
           </div>
         </div>
       ),
-      completed: completedSteps.has(4),
+      completed: completedSteps.has(4) || currentStep >= 4,
       skippable: false
     }
   ]
@@ -273,7 +299,12 @@ const DataAnalysisWizard: React.FC<DataAnalysisWizardProps> = ({
     if (paragraphs.length === 0 && currentStep > 0) {
       return false
     }
-    return !currentStepData.skippable || completedSteps.has(currentStep)
+    // For required steps, check if step is completed using the step's completed property
+    if (!currentStepData.skippable) {
+      return currentStepData.completed
+    }
+    // For skippable steps, always allow proceeding
+    return true
   }
 
   return (

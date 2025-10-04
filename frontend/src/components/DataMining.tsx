@@ -16,9 +16,11 @@ import {
 interface DataMiningProps {
   paragraphs: ParsedParagraph[]
   onClose: () => void
+  showCloseButton?: boolean
+  isEmbedded?: boolean
 }
 
-const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
+const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose, showCloseButton = true, isEmbedded = false }) => {
   const [selectedParagraph, setSelectedParagraph] = useState<string>('')
   const [selectedParagraphs, setSelectedParagraphs] = useState<string[]>([])
   const [customText, setCustomText] = useState<string>('')
@@ -257,7 +259,7 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
   }
 
   return (
-    <div style={{
+    <div style={isEmbedded ? {} : {
       position: 'fixed',
       top: 0,
       left: 0,
@@ -273,9 +275,9 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
       <div style={{
         background: 'white',
         borderRadius: '12px',
-        maxWidth: '1200px',
-        width: '100%',
-        maxHeight: '90vh',
+        width: isEmbedded ? '100%' : '1200px',
+        maxWidth: isEmbedded ? 'none' : '1200px',
+        maxHeight: isEmbedded ? '70vh' : '90vh',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column'
@@ -297,17 +299,19 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '8px'
-            }}
-          >
-            <X size={24} color="#6b7280" />
-          </button>
+          {showCloseButton && (
+            <button
+              onClick={onClose}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '8px'
+              }}
+            >
+              <X size={24} color="#6b7280" />
+            </button>
+          )}
         </div>
 
         {/* Content */}
@@ -1421,8 +1425,7 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
           )}
         </div>
       </div>
-
-      <style>{`
+      {!isEmbedded && <style>{`
         .spinner {
           animation: spin 1s linear infinite;
         }
@@ -1444,7 +1447,7 @@ const DataMining: React.FC<DataMiningProps> = ({ paragraphs, onClose }) => {
           transform: translateY(-1px);
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-      `}</style>
+      `}</style>}
     </div>
   )
 }
