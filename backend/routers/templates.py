@@ -16,6 +16,8 @@ class DatasetTemplate(BaseModel):
     fields: List[Dict[str, Any]]
     annotation_schema: Dict[str, Any]
     export_format: str  # "csv", "jsonl", "huggingface"
+    created_at: Optional[str] = None
+    usage_count: Optional[int] = None
 
 class CustomDatasetRequest(BaseModel):
     name: str
@@ -60,21 +62,6 @@ def save_custom_template(template: DatasetTemplate):
     with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(template.dict(), f, indent=2, ensure_ascii=False)
 
-class DatasetTemplate(BaseModel):
-    id: str
-    name: str
-    description: str
-    task_type: str  # "classification", "ner", "sentiment", "qa", "custom"
-    fields: List[Dict[str, Any]]
-    annotation_schema: Dict[str, Any]
-    export_format: str  # "csv", "jsonl", "huggingface"
-
-class CustomDatasetRequest(BaseModel):
-    name: str
-    description: str
-    fields: List[Dict[str, Any]]
-    annotation_schema: Dict[str, Any]
-
 # Predefined dataset templates
 PREDEFINED_TEMPLATES = {
     "sentiment_analysis": DatasetTemplate(
@@ -92,7 +79,9 @@ PREDEFINED_TEMPLATES = {
             "options": ["positive", "negative", "neutral"],
             "instructions": "Select the overall sentiment of the text"
         },
-        export_format="jsonl"
+        export_format="jsonl",
+        created_at="2024-01-15T10:00:00Z",
+        usage_count=245
     ),
     
     "text_classification": DatasetTemplate(
@@ -111,7 +100,9 @@ PREDEFINED_TEMPLATES = {
             "allow_custom": True,
             "instructions": "Classify the text into appropriate category"
         },
-        export_format="jsonl"
+        export_format="jsonl",
+        created_at="2024-01-10T14:30:00Z",
+        usage_count=189
     ),
     
     "named_entity_recognition": DatasetTemplate(
@@ -131,7 +122,9 @@ PREDEFINED_TEMPLATES = {
             "labeling_scheme": "BIO",
             "instructions": "Highlight entities in the text and assign appropriate labels"
         },
-        export_format="jsonl"
+        export_format="jsonl",
+        created_at="2024-01-20T09:15:00Z",
+        usage_count=156
     ),
     
     "question_answering": DatasetTemplate(
@@ -150,7 +143,9 @@ PREDEFINED_TEMPLATES = {
             "allow_no_answer": True,
             "instructions": "Select the text span that answers the question"
         },
-        export_format="jsonl"
+        export_format="jsonl",
+        created_at="2024-01-25T16:45:00Z",
+        usage_count=98
     ),
     
     "summarization": DatasetTemplate(
@@ -168,7 +163,9 @@ PREDEFINED_TEMPLATES = {
             "max_length": 500,
             "instructions": "Write a concise summary of the main points"
         },
-        export_format="jsonl"
+        export_format="jsonl",
+        created_at="2024-02-01T11:20:00Z",
+        usage_count=134
     )
 }
 

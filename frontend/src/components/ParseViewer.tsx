@@ -65,6 +65,38 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose, onParagraphsLo
   const [collapseWordCount, setCollapseWordCount] = useState<boolean>(false)
   const [collapseCharCount, setCollapseCharCount] = useState<boolean>(false)
 
+  // Add responsive styles
+  React.useEffect(() => {
+    const style = document.createElement('style')
+    style.textContent = `
+      @media (max-width: 768px) {
+        .filter-grid {
+          grid-template-columns: 1fr !important;
+        }
+        .filter-header {
+          flex-direction: column !important;
+          align-items: flex-start !important;
+          gap: 12px !important;
+        }
+        .filter-header > div {
+          width: 100% !important;
+          justify-content: space-between !important;
+        }
+        .search-options {
+          flex-direction: column !important;
+          align-items: stretch !important;
+        }
+        .search-options label {
+          max-width: none !important;
+        }
+      }
+    `
+    document.head.appendChild(style)
+    return () => {
+      document.head.removeChild(style)
+    }
+  }, [])
+
   useEffect(() => {
     parseFile()
   }, [file.file_id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -509,7 +541,7 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose, onParagraphsLo
           overflow: 'hidden'
         }}>
           {/* Filter Header */}
-          <div style={{ 
+          <div className="filter-header" style={{ 
             background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
             borderBottom: '2px solid #1e40af',
             padding: '16px 24px', 
@@ -845,7 +877,13 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose, onParagraphsLo
                   )}
                   
                   {/* Search Options */}
-                  <div style={{ display: 'flex', gap: '16px', fontSize: '13px', flexWrap: 'wrap' }}>
+                  <div className="search-options" style={{ 
+                    display: 'flex', 
+                    gap: '16px', 
+                    fontSize: '13px', 
+                    flexDirection: 'column',
+                    alignItems: 'flex-start'
+                  }}>
                     <label style={{ 
                       display: 'flex', 
                       alignItems: 'center', 
@@ -856,7 +894,9 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose, onParagraphsLo
                       borderRadius: '8px',
                       background: caseSensitive ? '#eff6ff' : 'transparent',
                       border: caseSensitive ? '1px solid #93c5fd' : '1px solid transparent',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      width: '100%',
+                      maxWidth: '200px'
                     }}>
                       <input
                         type="checkbox"
@@ -883,7 +923,9 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose, onParagraphsLo
                         borderRadius: '8px',
                         background: wholeWords ? '#eff6ff' : 'transparent',
                         border: wholeWords ? '1px solid #93c5fd' : '1px solid transparent',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.2s',
+                        width: '100%',
+                        maxWidth: '200px'
                       }}>
                         <input
                           type="checkbox"
@@ -906,7 +948,11 @@ const ParseViewer: React.FC<ParseViewerProps> = ({ file, onClose, onParagraphsLo
             </div>
 
             {/* Filter Grid for other filters */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+            <div className="filter-grid" style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', 
+              gap: '16px' 
+            }}>
               
               {/* Page Filter */}
               <div style={{
