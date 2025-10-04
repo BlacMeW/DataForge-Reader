@@ -166,6 +166,192 @@ PREDEFINED_TEMPLATES = {
         export_format="jsonl",
         created_at="2024-02-01T11:20:00Z",
         usage_count=134
+    ),
+
+    "text_generation": DatasetTemplate(
+        id="text_generation",
+        name="Text Generation",
+        description="Creative text generation and completion tasks",
+        task_type="generation",
+        fields=[
+            {"name": "prompt", "type": "string", "description": "Input prompt or context"},
+            {"name": "completion", "type": "string", "description": "Generated text completion"},
+            {"name": "max_length", "type": "integer", "optional": True, "description": "Maximum generation length"},
+            {"name": "temperature", "type": "float", "optional": True, "description": "Generation temperature"}
+        ],
+        annotation_schema={
+            "type": "text_generation",
+            "max_length": 1000,
+            "instructions": "Complete the text naturally and coherently"
+        },
+        export_format="jsonl",
+        created_at="2024-02-05T13:30:00Z",
+        usage_count=87
+    ),
+
+    "machine_translation": DatasetTemplate(
+        id="machine_translation",
+        name="Machine Translation",
+        description="Translate text between different languages",
+        task_type="translation",
+        fields=[
+            {"name": "source_text", "type": "string", "description": "Text in source language"},
+            {"name": "target_text", "type": "string", "description": "Translated text in target language"},
+            {"name": "source_lang", "type": "string", "description": "Source language code (e.g., 'en', 'es', 'fr')"},
+            {"name": "target_lang", "type": "string", "description": "Target language code (e.g., 'en', 'es', 'fr')"}
+        ],
+        annotation_schema={
+            "type": "text_generation",
+            "instructions": "Provide an accurate translation that preserves meaning and context"
+        },
+        export_format="jsonl",
+        created_at="2024-02-10T15:45:00Z",
+        usage_count=76
+    ),
+
+    "part_of_speech_tagging": DatasetTemplate(
+        id="part_of_speech_tagging",
+        name="Part-of-Speech Tagging",
+        description="Token-level classification for grammatical categories",
+        task_type="pos_tagging",
+        fields=[
+            {"name": "text", "type": "string", "description": "Input text"},
+            {"name": "tokens", "type": "list", "description": "Tokenized text"},
+            {"name": "pos_tags", "type": "list", "description": "POS tags for each token"},
+            {"name": "lemmas", "type": "list", "optional": True, "description": "Lemmatized forms"}
+        ],
+        annotation_schema={
+            "type": "token_classification",
+            "tag_set": ["NOUN", "VERB", "ADJ", "ADV", "PRON", "DET", "ADP", "CONJ", "PRT", "NUM", "X"],
+            "instructions": "Assign the correct part-of-speech tag to each token"
+        },
+        export_format="jsonl",
+        created_at="2024-02-15T09:20:00Z",
+        usage_count=65
+    ),
+
+    "text_similarity": DatasetTemplate(
+        id="text_similarity",
+        name="Text Similarity",
+        description="Determine semantic similarity between text pairs",
+        task_type="similarity",
+        fields=[
+            {"name": "text1", "type": "string", "description": "First text"},
+            {"name": "text2", "type": "string", "description": "Second text"},
+            {"name": "similarity_score", "type": "float", "description": "Similarity score (0-1)"},
+            {"name": "label", "type": "categorical", "options": ["similar", "dissimilar"], "optional": True}
+        ],
+        annotation_schema={
+            "type": "similarity_rating",
+            "scale": [0, 1],
+            "instructions": "Rate how similar these two texts are semantically"
+        },
+        export_format="jsonl",
+        created_at="2024-02-20T11:10:00Z",
+        usage_count=52
+    ),
+
+    "dialogue_system": DatasetTemplate(
+        id="dialogue_system",
+        name="Dialogue System",
+        description="Conversational AI and chatbot training data",
+        task_type="dialogue",
+        fields=[
+            {"name": "context", "type": "list", "description": "Previous conversation turns"},
+            {"name": "user_input", "type": "string", "description": "User message"},
+            {"name": "response", "type": "string", "description": "System response"},
+            {"name": "intent", "type": "string", "optional": True, "description": "Detected user intent"}
+        ],
+        annotation_schema={
+            "type": "text_generation",
+            "instructions": "Provide a natural, helpful response to the user's message"
+        },
+        export_format="jsonl",
+        created_at="2024-02-25T14:00:00Z",
+        usage_count=43
+    ),
+
+    "code_generation": DatasetTemplate(
+        id="code_generation",
+        name="Code Generation",
+        description="Generate code from natural language descriptions",
+        task_type="code_generation",
+        fields=[
+            {"name": "description", "type": "string", "description": "Natural language description of the task"},
+            {"name": "code", "type": "string", "description": "Generated code"},
+            {"name": "language", "type": "categorical", "options": ["python", "javascript", "java", "cpp", "go", "rust", "other"]},
+            {"name": "framework", "type": "string", "optional": True, "description": "Specific framework or library"}
+        ],
+        annotation_schema={
+            "type": "text_generation",
+            "instructions": "Write clean, functional code that solves the described task"
+        },
+        export_format="jsonl",
+        created_at="2024-03-01T10:30:00Z",
+        usage_count=91
+    ),
+
+    "text_to_sql": DatasetTemplate(
+        id="text_to_sql",
+        name="Text-to-SQL",
+        description="Convert natural language queries to SQL statements",
+        task_type="text_to_sql",
+        fields=[
+            {"name": "question", "type": "string", "description": "Natural language question"},
+            {"name": "sql_query", "type": "string", "description": "Generated SQL query"},
+            {"name": "database_schema", "type": "string", "description": "Database schema information"},
+            {"name": "query_type", "type": "categorical", "options": ["SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP"]}
+        ],
+        annotation_schema={
+            "type": "text_generation",
+            "instructions": "Generate a correct SQL query that answers the question using the provided schema"
+        },
+        export_format="jsonl",
+        created_at="2024-03-05T12:15:00Z",
+        usage_count=67
+    ),
+
+    "emotion_recognition": DatasetTemplate(
+        id="emotion_recognition",
+        name="Emotion Recognition",
+        description="Classify emotions expressed in text",
+        task_type="emotion_classification",
+        fields=[
+            {"name": "text", "type": "string", "description": "Input text"},
+            {"name": "emotion", "type": "categorical", "options": ["joy", "sadness", "anger", "fear", "surprise", "disgust", "neutral"]},
+            {"name": "intensity", "type": "float", "optional": True, "description": "Emotion intensity (0-1)"},
+            {"name": "confidence", "type": "float", "optional": True, "description": "Classification confidence"}
+        ],
+        annotation_schema={
+            "type": "single_choice",
+            "options": ["joy", "sadness", "anger", "fear", "surprise", "disgust", "neutral"],
+            "instructions": "Select the primary emotion expressed in the text"
+        },
+        export_format="jsonl",
+        created_at="2024-03-10T14:45:00Z",
+        usage_count=58
+    ),
+
+    "language_identification": DatasetTemplate(
+        id="language_identification",
+        name="Language Identification",
+        description="Detect the language of given text",
+        task_type="language_id",
+        fields=[
+            {"name": "text", "type": "string", "description": "Input text"},
+            {"name": "language", "type": "categorical", "options": ["en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko", "ar", "hi", "other"]},
+            {"name": "confidence", "type": "float", "optional": True, "description": "Detection confidence score"},
+            {"name": "script", "type": "string", "optional": True, "description": "Writing script (Latin, Cyrillic, Arabic, etc.)"}
+        ],
+        annotation_schema={
+            "type": "single_choice",
+            "options": ["en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko", "ar", "hi", "other"],
+            "allow_custom": True,
+            "instructions": "Identify the primary language of the text"
+        },
+        export_format="jsonl",
+        created_at="2024-03-15T16:20:00Z",
+        usage_count=72
     )
 }
 
