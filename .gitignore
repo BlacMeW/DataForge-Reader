@@ -88,6 +88,7 @@ storage/cache/*
 !storage/cache/.gitkeep
 storage/rag/*
 !storage/rag/.gitkeep
+!storage/rag/README.md
 dataset_exports/*
 !dataset_exports/.gitkeep
 !dataset_exports/README.md
