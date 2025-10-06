@@ -1,0 +1,8 @@
+{
+  "dataset_id": "ds_sample",
+  "dataset_name": "Sample Dataset",
+  "source": "generated",
+  "rows": 4,
+  "description": "Small sample dataset for local testing and RAG indexing",
+  "created_at": "2025-10-06T00:00:00Z"
+}

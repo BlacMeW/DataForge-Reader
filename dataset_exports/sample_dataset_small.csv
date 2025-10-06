@@ -1,0 +1,5 @@
+id,dataset_id,dataset_name,row_index,full_text,prompt,completion,intent,category,metadata
+1,ds_sample,Sample Dataset,0,"The quick brown fox jumps over the lazy dog.","","","example_intent","example_category","{""page"":1,""word_count"":9,""char_count"":44}"
+2,ds_sample,Sample Dataset,1,"DataForge Reader lets you index documents for RAG searches.","","","info","documentation","{""page"":2,""word_count"":7,""char_count"":52}"
+3,ds_sample,Sample Dataset,2,"Machine learning systems can search and retrieve context quickly.","","","ml","concepts","{""page"":3,""word_count"":7,""char_count"":60}"
+4,ds_sample,Sample Dataset,3,"This fourth sample row helps test pagination and context coverage.","","","test","misc","{""page"":4,""word_count"":9,""char_count"":66}"
