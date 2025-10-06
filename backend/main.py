@@ -60,14 +60,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     # Try relative imports first
     from .routers import upload, parse, annotate, export, templates, data_mining
-    from .routers import data_mining_enhanced
+    from .routers import data_mining_enhanced, rag
     print("Successfully imported routers with relative imports")
 except ImportError as e:
     print(f"Relative import failed: {e}")
     try:
         # Fallback to absolute imports for AppImage environment
         from routers import upload, parse, annotate, export, templates, data_mining
-        from routers import data_mining_enhanced
+        from routers import data_mining_enhanced, rag
         print("Successfully imported routers with absolute imports")
     except ImportError as e2:
         print(f"Absolute import also failed: {e2}")
@@ -80,6 +80,7 @@ except ImportError as e:
             import routers.templates as templates
             import routers.data_mining as data_mining
             import routers.data_mining_enhanced as data_mining_enhanced
+            import routers.rag as rag
             print("Successfully imported individual router modules")
         except ImportError as e3:
             print(f"All import methods failed: {e3}")
@@ -94,7 +95,7 @@ except ImportError as e:
                 return {"templates": [], "error": "Templates router not available"}
             
             print("Added fallback endpoints")
-            upload = parse = annotate = export = templates = data_mining = data_mining_enhanced = None
+            upload = parse = annotate = export = templates = data_mining = data_mining_enhanced = rag = None
 
 # Include routers if successfully imported
 try:
@@ -128,6 +129,10 @@ try:
     if 'data_mining_enhanced' in locals() and data_mining_enhanced and hasattr(data_mining_enhanced, 'router'):
         app.include_router(data_mining_enhanced.router, prefix="/api/nlp", tags=["nlp-enhanced"])
         print("Added enhanced NLP data mining router")
+    
+    if 'rag' in locals() and rag and hasattr(rag, 'router'):
+        app.include_router(rag.router, prefix="/api", tags=["rag"])
+        print("Added RAG router")
 except Exception as e:
     print(f"Error adding routers: {e}")
 

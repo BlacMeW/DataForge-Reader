@@ -11,13 +11,14 @@ def get_upload_dir():
 
 router = APIRouter()
 
-ALLOWED_EXTENSIONS = {'.pdf', '.epub'}
+ALLOWED_EXTENSIONS = {'.pdf', '.epub', '.csv'}
 ALLOWED_MIME_TYPES = {
     'application/pdf',
     'application/epub+zip',
     'application/x-mobipocket-ebook',
     'application/zip',  # EPUB files are often detected as ZIP
-    'application/octet-stream'  # Sometimes EPUB files are detected as binary
+    'application/octet-stream',  # Sometimes EPUB files are detected as binary
+    'text/csv'
 }
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
@@ -90,6 +91,21 @@ async def upload_file(file: UploadFile = File(...)):
         # Save file
         with open(file_path, "wb") as f:
             f.write(content)
+
+        # If the uploaded file is a CSV, also copy it into the exports directory
+        # using the expected exported dataset filename so the RAG indexing
+        # endpoint (which loads exported datasets from exports dir) can find it.
+        try:
+            if file_ext == '.csv':
+                exports_dir = os.environ.get("DATAFORGE_EXPORTS_DIR", "../dataset_exports")
+                os.makedirs(exports_dir, exist_ok=True)
+                export_filename = f"{file_id}_export.csv"
+                export_path = os.path.join(exports_dir, export_filename)
+                with open(export_path, 'wb') as ef:
+                    ef.write(content)
+        except Exception as e:
+            # Non-fatal: warn and continue
+            print(f"Warning: could not copy uploaded CSV to exports dir: {e}")
         
         return JSONResponse(
             status_code=200,

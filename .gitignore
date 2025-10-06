@@ -86,8 +86,13 @@ storage/uploads/*
 !storage/uploads/.gitkeep
 storage/cache/*
 !storage/cache/.gitkeep
+storage/rag/*
+!storage/rag/.gitkeep
 dataset_exports/*
 !dataset_exports/.gitkeep
+!dataset_exports/README.md
+!dataset_exports/sample_*.csv
+!dataset_exports/sample_*_index_meta.json
 
 # Test files (optional - remove if you want to keep test files)
 test_*.py

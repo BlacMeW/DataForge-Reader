@@ -298,6 +298,54 @@ async def parse_file(request: ParseRequest):
         # Cache the parsed results for export functionality
         save_to_cache(request.file_id, paragraphs, total_pages, extraction_method, processing_time)
         
+        # Automatically index for RAG search
+        try:
+            from .rag import router as rag_router
+            # Import the RAG indexing function
+            from .rag import convert_parsed_data_to_rag_documents, rag_index
+            
+            # Convert parsed data to RAG format
+            dataset_name = original_filename or f"Document {request.file_id}"
+            rag_documents = convert_parsed_data_to_rag_documents(
+                request.file_id, 
+                {
+                    'paragraphs': paragraphs,
+                    'extraction_method': extraction_method,
+                    'filename': dataset_name
+                }, 
+                dataset_name
+            )
+            
+            # Index documents
+            indexed_count = 0
+            for doc in rag_documents:
+                if doc['id'] not in rag_index['embeddings']:
+                    # Create embedding (import the function)
+                    from .rag import create_simple_embedding
+                    embedding = create_simple_embedding(doc['fullText'])
+                    rag_index['embeddings'][doc['id']] = embedding
+                    rag_index['documents'].append(doc)
+                    indexed_count += 1
+            
+            # Update stats
+            if request.file_id not in rag_index['indexed_datasets']:
+                rag_index['indexed_datasets'].add(request.file_id)
+                rag_index['stats']['indexed_datasets'] += 1
+            
+            rag_index['stats']['total_documents'] += indexed_count
+            from datetime import datetime
+            rag_index['stats']['last_updated'] = datetime.now().isoformat()
+            
+            # Save index to disk
+            from .rag import save_rag_index
+            save_rag_index()
+            
+            print(f"Auto-indexed {indexed_count} paragraphs for RAG search")
+            
+        except Exception as rag_error:
+            print(f"Warning: RAG auto-indexing failed: {rag_error}")
+            # Don't fail the parsing if RAG indexing fails
+        
         return ParseResponse(
             file_id=request.file_id,
             filename=original_filename or "unknown",

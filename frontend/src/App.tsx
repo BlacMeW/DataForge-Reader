@@ -10,8 +10,12 @@ import DataMining from './components/DataMining'
 import ProjectAnalytics from './components/ProjectAnalytics'
 import AnalyticsDashboard from './components/AnalyticsDashboard'
 import DataAnalysisWizard from './components/DataAnalysisWizard'
+import RAGQuery from './components/RAGQuery'
+import SampleDatasetGenerator from './pages/SampleDatasetGenerator'
+import RAGIndexing from './pages/RAGIndexing'
+import UploaderModal from './components/UploaderModal'
 import { useKeyboardShortcuts, showKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
-import { BookOpen, Settings, Folder, Keyboard, HelpCircle, Sparkles, BarChart3, Wand2 } from 'lucide-react'
+import { BookOpen, Settings, Folder, Keyboard, HelpCircle, Sparkles, BarChart3, Wand2, Search } from 'lucide-react'
 
 export interface UploadedFile {
   file_id: string
@@ -48,7 +52,7 @@ interface DatasetTemplate {
   }
 }
 
-type AppView = 'upload' | 'parse' | 'templates' | 'custom-template' | 'manage-templates' | 'projects' | 'data-mining' | 'analytics-dashboard' | 'data-analysis-wizard'
+type AppView = 'upload' | 'parse' | 'templates' | 'custom-template' | 'manage-templates' | 'projects' | 'data-mining' | 'analytics-dashboard' | 'data-analysis-wizard' | 'rag-query' | 'sample-generator' | 'rag-indexing'
 
 function App() {
   const [currentFile, setCurrentFile] = useState<UploadedFile | null>(null)
@@ -59,6 +63,8 @@ function App() {
   const [showDataMining, setShowDataMining] = useState<boolean>(false)
   const [showProjectAnalytics, setShowProjectAnalytics] = useState<boolean>(false)
   const [showDataAnalysisWizard, setShowDataAnalysisWizard] = useState<boolean>(false)
+  const [showRAGQuery, setShowRAGQuery] = useState<boolean>(false)
+  const [showUploader, setShowUploader] = useState<boolean>(false)
   const [paragraphs, setParagraphs] = useState<ParsedParagraph[]>([])
   const [keywords] = useState<Array<{ keyword: string; score: number }>>([])
   const [entities] = useState<Array<{ text: string; label: string; count: number }>>([])
@@ -166,6 +172,32 @@ function App() {
               File Upload
             </button>
             <button 
+              onClick={() => setCurrentView('sample-generator')}
+              style={{ 
+                background: currentView === 'sample-generator' ? '#e0e7ff' : 'transparent',
+                color: currentView === 'sample-generator' ? '#1e40af' : '#6b7280',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              Sample Data
+            </button>
+            <button 
+              onClick={() => setCurrentView('rag-indexing')}
+              style={{ 
+                background: currentView === 'rag-indexing' ? '#e0e7ff' : 'transparent',
+                color: currentView === 'rag-indexing' ? '#1e40af' : '#6b7280',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              RAG Indexing
+            </button>
+            <button 
               onClick={() => setCurrentView('projects')}
               style={{ 
                 background: currentView === 'projects' ? '#e0e7ff' : 'transparent',
@@ -215,6 +247,29 @@ function App() {
             </button>
             
             <button 
+              onClick={() => {
+                // open RAG as a modal by default (matches DataAnalysisWizard behavior)
+                setShowRAGQuery(true)
+                setCurrentView('rag-query')
+              }}
+              style={{ 
+                background: currentView === 'rag-query' ? '#e0e7ff' : 'transparent',
+                color: currentView === 'rag-query' ? '#1e40af' : '#6b7280',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <Search size={16} style={{ marginRight: '6px' }} />
+              RAG Query
+            </button>
+
+            {/* Quick RAG removed - dialog not used */}
+            
+            <button 
               onClick={() => setShowDataAnalysisWizard(true)}
               style={{ 
                 background: 'transparent',
@@ -229,6 +284,22 @@ function App() {
             >
               <Wand2 size={16} style={{ marginRight: '6px' }} />
               Analysis Wizard
+            </button>
+            <button 
+              onClick={() => setShowUploader(true)}
+              style={{ 
+                background: 'transparent',
+                color: '#6b7280',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+              title="Open Uploader"
+            >
+              Upload
             </button>
             
             <button 
@@ -393,6 +464,17 @@ function App() {
             entities={entities}
           />
         )}
+        {currentView === 'sample-generator' && (
+          <SampleDatasetGenerator />
+        )}
+
+        {currentView === 'rag-indexing' && (
+          <RAGIndexing />
+        )}
+        
+        {currentView === 'rag-query' && (
+          <RAGQuery />
+        )}
       </main>
 
       <footer style={{ 
@@ -437,6 +519,27 @@ function App() {
           onClose={() => setShowDataAnalysisWizard(false)}
         />
       )}
+
+      {/* RAG Query Modal (controlled) */}
+      {showRAGQuery && (
+        <RAGQuery
+          onClose={() => {
+            setShowRAGQuery(false)
+            // optionally switch away from rag-query view when modal closes
+            if (currentView === 'rag-query') setCurrentView('upload')
+          }}
+        />
+      )}
+
+      {/* Uploader Modal (test-only) */}
+      {showUploader && (
+        <UploaderModal
+          isOpen={showUploader}
+          onClose={() => setShowUploader(false)}
+        />
+      )}
+
+      {/* RAG Query Dialog removed */}
     </div>
   )
 }
